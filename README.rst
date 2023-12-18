@@ -1,6 +1,10 @@
 =======
-IBR-XAS
+Iterative Bragg peak Removal of X-ray Absorption Spectrum (IBR-XAS)
 =======
+
+This package amims to provide a method of removing Bragg peaks from X-ray absorption spectra.
+This method can be applied for both transmission and fluorescence mode of XAS, with the aid of varing a angle of sample.
+
 
 
 .. image:: https://img.shields.io/pypi/v/ibr_xas.svg
@@ -28,10 +32,16 @@ Features
 
 * TODO
 
-Credits
+
+Limitations
+-----------
+
+This method has a limitation when there is a significant change in the trend in the post-edge region, where the assumption that
+
+    .. math::
+        \mu_0(E) \propto I_{F}/I_{0}
+        \mu(E) \propto -\ln(I_{T}/I_{0})
+
+References
 -------
 
-This package was created with Cookiecutter_ and the `audreyr/cookiecutter-pypackage`_ project template.
-
-.. _Cookiecutter: https://github.com/audreyr/cookiecutter
-.. _`audreyr/cookiecutter-pypackage`: https://github.com/audreyr/cookiecutter-pypackage
