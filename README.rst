@@ -66,7 +66,7 @@ The decomanano package can be imported and used in python scripts.
 .. _API documentation: https://ameyanagi.github.io/IBR-XAS/modules.html
 
 Limitation
-~~~~~~~~~~
+----------
 
 This method has a limitation when there is a significant change in the trend in the post-edge region, where the assumption that following assumption is not valid anymore. The effect of large angle rotation of the sample is expressed in the following equation, as long as the sample is uniform.
 
