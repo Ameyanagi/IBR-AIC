@@ -34,7 +34,8 @@ import ibr_xas
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
 extensions = [
     "sphinx.ext.autodoc",
-    "sphinx.ext.viewcode" "sphinx.ext.napoleon",
+    "sphinx.ext.viewcode",
+    "sphinx.ext.napoleon",
     "sphinx.ext.mathjax",
     "sphinx_rtd_theme",
 ]
