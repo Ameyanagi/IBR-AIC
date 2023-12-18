@@ -8,6 +8,8 @@ Installation
 Stable release
 --------------
 
+(This is currently not available. This will be available after publication)
+
 To install IBR-XAS, run this command in your terminal:
 
 .. code-block:: console
@@ -28,7 +30,14 @@ From sources
 
 The sources for IBR-XAS can be downloaded from the `Github repo`_.
 
-You can either clone the public repository:
+You can install directly with pip:
+
+.. code-block:: console
+
+    $ pip install git+hhtps://github.com/Ameyanagi/IBR-XAS
+
+Or you can download the source code and install it by yourself.
+In order to do so, you can either clone the public repository:
 
 .. code-block:: console
 

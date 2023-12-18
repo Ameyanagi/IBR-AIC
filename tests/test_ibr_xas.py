@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# pyright: strict
 
 """Tests for `ibr_xas` package."""
 
@@ -7,12 +8,13 @@ import pytest
 # from click.testing import CliRunner
 
 from ibr_xas import ibr_xas
+import numpy as np
 
 # from ibr_xas import cli
 
 
 @pytest.fixture
-def spectra_data():
+def spectra_data() -> tuple[list[np.ndarray], list[np.ndarray], list[str]]:
     file_path = "tests/testfiles/AlYN/*.dat"
     energy_list, mu_list, file_list = ibr_xas.prepare_spectra_from_QAS(
         file_path, fluorescence=True

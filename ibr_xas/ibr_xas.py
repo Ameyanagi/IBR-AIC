@@ -217,7 +217,9 @@ class IbrXas:
         return self
 
 
-def prepare_spectra_from_QAS(file_path: str, fluorescence: bool = True):
+def prepare_spectra_from_QAS(
+    file_path: str, fluorescence: bool = True
+) -> tuple[list[np.ndarray], list[np.ndarray], list[str]]:
     """Example of preparing a input for IbrXas class
 
     Args:
@@ -253,7 +255,9 @@ def prepare_spectra_from_QAS(file_path: str, fluorescence: bool = True):
     return energy_list, mu_list, file_list
 
 
-def prepare_group_from_QAS(file_path: str, fluorescence: bool = True):
+def prepare_group_from_QAS(
+    file_path: str, fluorescence: bool = True
+) -> tuple[list[HasEnergyMu], list[str]]:
     """Example of preparing an input(group) for IbrXas
 
     Please `pip install xraylarch` if you want to use this function.
