@@ -30,12 +30,12 @@ class IbrXas:
         group_list: list[HasEnergyMu] | None = None,
         file_list=None,
     ) -> None:
-        if group_list is None and ((energy_list is None) or (mu_list is None)):
-            raise ValueError("Please provide group_list or energy_list and mu_list")
-
         if group_list is not None:
             energy_list = [group.energy for group in group_list]
             mu_list = [group.mu for group in group_list]
+
+        if energy_list is None or mu_list is None:
+            raise ValueError("Please provide group_list or energy_list and mu_list")
 
         self.energy_list = energy_list
         self.mu_list = mu_list
