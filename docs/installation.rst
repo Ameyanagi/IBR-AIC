@@ -14,7 +14,7 @@ To install IBR-XAS, run this command in your terminal:
 
 .. code-block:: console
 
-    $ pip install ibr_xas
+    $ pip install ibr-xas
 
 This is the preferred method to install IBR-XAS, as it will always install the most recent stable release.
 
@@ -34,14 +34,14 @@ You can install directly with pip:
 
 .. code-block:: console
 
-    $ pip install git+hhtps://github.com/Ameyanagi/IBR-XAS
+    $ pip install git+https://github.com/Ameyanagi/IBR-XAS
 
 Or you can download the source code and install it by yourself.
 In order to do so, you can either clone the public repository:
 
 .. code-block:: console
 
-    $ git clone git://github.com/Ameyanagi/ibr_xas
+    $ git clone git://github.com/Ameyanagi/IBR-XAS
 
 Or download the `tarball`_:
 
@@ -56,5 +56,5 @@ Once you have a copy of the source, you can install it with:
     $ python setup.py install
 
 
-.. _Github repo: https://github.com/Ameyanagi/ibr_xas
-.. _tarball: https://github.com/Ameyanagi/ibr_xas/tarball/master
+.. _Github repo: https://github.com/Ameyanagi/IBR-XAS
+.. _tarball: https://github.com/Ameyanagi/IBR-XAS/tarball/master
