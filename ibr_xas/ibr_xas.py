@@ -10,18 +10,47 @@ import scipy.optimize as opt
 
 
 class HasEnergyMu(Protocol):
+    """Protocol to define the class that has energy and mu
+
+    This class is used for type hinting. Group class from xraylarch also has a energy and mu attributes, and can be used as an input for IbrXas class.
+    """
+
     energy: np.ndarray
     mu: np.ndarray
 
 
 class IbrXas:
-    """ASXAS: A class to remove Bragg peaks from XAS spectra"""
+    """IbrXas: A class to remove Bragg peaks from XAS spectra
+
+    Usage:
+        Following is an example usage of the class.\n
+        1. Prepare list of energy, and mu. The energy and mu has to be in the format of list of np.ndarray.\n
+        2. Create an instance of the class.\n
+        3. Call the calc_bragg_iter method to iteratively calculate the Bragg peaks.\n
+        4. Call the save_dat method to save the spectra.\n
+
+        .. code-block:: python
+
+            from ibr_xas import IbrXas
+
+            energy_list, mu_list, file_list = prepare_spectra_from_qas(file_path)
+
+            ix = IbrXas(energy_list, mu_list, file_list)
+            ix.calc_bragg_iter().save_dat()
+
+    Args:
+        energy_list (list[np.ndarray]): List of the energy
+        mu_list (list[np.ndarray]): List of the mu
+        group_list (list[HasEnergyMu]): List of the group
+        file_list (list[str]): List of the file path
+    """
 
     energy_list: list[np.ndarray]
     mu_list: list[np.ndarray]
     min_mu_list: list[np.ndarray]
     scale_list: list[np.ndarray]
     file_list: list[str] | None
+    ibr_loss: float
 
     def __init__(
         self,
@@ -52,6 +81,8 @@ class IbrXas:
 
         self.scale_list = [np.ones_like(mu) for mu in self.mu_list]
 
+        self.ibr_loss = np.inf
+
         if file_list is not None:
             assert len(file_list) == len(self.mu_list)
             self.file_list = file_list
@@ -70,7 +101,11 @@ class IbrXas:
         return self
 
     def loss_func(
-        self, x: float, spectrum: np.ndarray, ref_index: int, index: np.ndarray
+        self,
+        x: float,
+        spectrum: np.ndarray,
+        reference: np.ndarray,
+        index: np.ndarray | tuple,
     ) -> np.ndarray:
         """Mean square root error function for the optimization of the scaling factor
 
@@ -80,61 +115,76 @@ class IbrXas:
         Args:
             x (float): scaling factor
             spectrum (np.ndarray): spectrum to be scaled
-            ref_index (int): index of the reference spectrum
+            reference (np.ndarray): reference spectrum
             index (np.ndarray): index of the energy range to be used for the calculation of the loss function
 
         Return:
             np.ndarray: mean square root error
         """
+
         scaled_spectrum = spectrum[index] * x
 
-        return (
-            np.sqrt(abs(scaled_spectrum - self.mu_list[ref_index][index])).sum()
-            / index.sum()
-        )
+        return np.sqrt(abs(scaled_spectrum - reference[index])).sum()
 
     def loss_spectrum(
         self,
         spectrum_list: list[np.ndarray],
+        reference: np.ndarray,
         ref_index: int,
         energy_range: list[float] | None = None,
+        scale_range: list[float] | None = None,
     ) -> np.ndarray:
         if energy_range is None:
             energy_range = [-np.inf, np.inf]
 
+        if scale_range is None:
+            scale_range = [0.5, 1.5]
+
         scale = np.array([])
 
-        index = np.where(self.mu_list[ref_index] >= energy_range[0]) & (
-            self.mu_list[ref_index] <= energy_range[1]
+        index = np.where(
+            (self.energy_list[ref_index] >= energy_range[0])
+            & (self.energy_list[ref_index] <= energy_range[1])
         )
 
         for spectrum in spectrum_list:
 
-            def func(x: float):
-                return self.loss_func(x, spectrum, ref_index, index)
+            def func(x: float) -> np.ndarray:
+                return self.loss_func(x, spectrum, reference, index)
 
-            scale = np.append(scale, opt.minimize(func, [0], bounds=[(0.5, 1.5)]).x)
+            scale = np.append(
+                scale,
+                opt.minimize(
+                    func, [1.0], bounds=[scale_range], options={"maxiter": 1000}
+                ).x,
+            )
 
         return scale
 
-    def calc_bragg(self, energy_range: list[float] | None = None) -> Self:
+    def calc_bragg(
+        self,
+        energy_range: list[float] | None = None,
+        scale_range: list[float] | None = None,
+    ) -> Self:
         """Function to caculate the Bragg peaks
 
-        The caulculation of the Bragg peaks is done in iterative manner.
-        1. Choose a reference spectrum where the Bragg peaks will be calculated.
-        2. Calaculate the scaling factor for the other spectra to match the reference spectrum. The loss fuction is the mean square root error, to reduce the effect of the Bragg peaks.
-        3. Subtract the scaled spectra from the reference spectrum. This difference spectrum will be corresponding to the Bragg peaks, but it is not remove completely.
-        4. Take an average of the difference spectra, add it to the reference spectrum, and go back to step 2.
-        5. Repeat step 2 to 4 until the difference spectrum converges.
+        The caulculation of the Bragg peaks is done in iterative manner and this function corresponds to 1 iteration.
+
+        1. Choose a reference spectrum where the Bragg peaks will be calculated.\n
+        2. Calaculate the scaling factor for the other spectra to match the reference spectrum. The loss fuction is the mean square root error, to reduce the effect of the Bragg peaks.\n
+        3. Subtract the scaled spectra from the reference spectrum. This difference spectrum will be corresponding to the Bragg peaks, but it is not remove completely.\n
+        4. Take an average of the difference spectra, add it to the reference spectrum, and go back to step 2.\n
+        5. Repeat step 2 to 4 until the difference spectrum converges.\n
 
         Args:
             energy_range (list[float], optional): Energy range to be used for the calculation of the loss function. Defaults to [-np.inf, np.inf].
+            scale_range (list[float], optional): Range of the scaling factor. Defaults to [0.5, 1.5].
 
         Returns:
-            None
+            self: Reference to the class itself
         """
-        minimum_mu_tmp = []
-        scale_tmp = []
+        minimum_mu_tmp: list[np.ndarray] = []
+        scale_tmp: list[np.ndarray] = []
 
         if energy_range is None:
             energy_range = [-np.inf, np.inf]
@@ -151,16 +201,17 @@ class IbrXas:
         ]
 
         for i in range(len(self.mu_list)):
-            reference: np.ndarray = copy(self.mu_list[i])
-            scale: np.ndarray = self.loss_spectrum(spectrum_tmp, i)
+            reference: np.ndarray = copy(spectrum_tmp[i])
+            scale: np.ndarray = self.loss_spectrum(
+                spectrum_tmp, reference, i, energy_range, scale_range
+            )
             minimum_mu: np.ndarray = np.zeros_like(self.energy_list[i])
-
-            # minimum_mu = 0
 
             for j in range(len(self.mu_list)):
                 diff = spectrum_tmp[j] * scale[j] - reference
-                minimum_mu += np.minimum(np.zeros_like(diff), diff)
-
+                minimum_mu = np.minimum(
+                    minimum_mu, np.minimum(np.zeros_like(diff), diff)
+                )
             scale_tmp.append(scale)
             minimum_mu_tmp.append(minimum_mu / len(self.mu_list) + self.min_mu_list[i])
 
@@ -172,8 +223,54 @@ class IbrXas:
         for i in range(len(minimum_mu_tmp)):
             minimum_mu_tmp[i] -= minimum_mu
 
+        delta_mu = 0
+        for i in range(len(minimum_mu_tmp)):
+            delta_mu += (
+                np.abs(self.min_mu_list[i] - minimum_mu_tmp[i])
+                / len(self.min_mu_list[i])
+            ).sum()
+
+        self.ibr_loss = delta_mu
+
         self.min_mu_list = minimum_mu_tmp
         self.scale_list = scale_tmp
+
+        # for i in range(len(self.mu_list)):
+        #     plt.plot(self.energy_list[i], self.mu_list[i] + self.min_mu_list[i])
+        # plt.show()
+        #
+
+        return self
+
+    def calc_bragg_iter(
+        self,
+        energy_range: list[float] | None = None,
+        scale_range: list[float] | None = None,
+        criteria: float = 1e-5,
+        max_iter=200,
+    ) -> Self:
+        """Iterative calculation of the Bragg peaks
+
+        Calculate the Bragg peaks in iterative manner. The calculation will be stopped when the difference between the previous and current update is lower than the criteria.
+        The amount of update is defined by MAE of the spectra, and has a same unit as absorption.
+
+        Args:
+            energy_range (list[float], optional): Energy range to be used for the calculation of the loss function. Defaults to [-np.inf, np.inf].
+            scale_range (list[float], optional): Range of the scaling factor. Please change this value if if the absolute intensity changes significantly larger than 1. Defaults to [0.5, 1.5].
+            criteria (float, optional): The criteria to stop the calculation. Defaults to 1e-5.
+            max_iter (int, optional): Maximum number of iteration. Defaults to 200.
+
+        Returns:
+            self: Reference to the class itself
+        """
+
+        for i in range(max_iter):
+            previous_ibr_loss = self.ibr_loss
+            self.calc_bragg(energy_range, scale_range)
+
+            if abs(previous_ibr_loss - self.ibr_loss) < criteria:
+                print("The calculation converged after {} iterations".format(i))
+                break
 
         return self
 
@@ -195,7 +292,7 @@ class IbrXas:
             assert len(file_list) == len(self.mu_list)
             self.file_list = file_list
 
-        os.makedirs(os.path.dirname(output_dir))
+        os.makedirs(os.path.dirname(output_dir), exist_ok=True)
 
         for i in range(len(self.energy_list)):
             if self.file_list is not None:
@@ -206,12 +303,16 @@ class IbrXas:
 
                 np.savetxt(
                     save_path,
-                    np.array([self.energy_list[i], self.mu_list[i]]).T,
+                    np.array(
+                        [self.energy_list[i], self.mu_list[i] + self.min_mu_list[i]]
+                    ).T,
                 )
             else:
                 np.savetxt(
                     "spectrum_{}.dat".format(i),
-                    np.array([self.energy_list[i], self.mu_list[i]]).T,
+                    np.array(
+                        [self.energy_list[i], self.mu_list[i] + self.min_mu_list[i]]
+                    ).T,
                 )
 
         return self
@@ -234,9 +335,9 @@ def prepare_spectra_from_QAS(
 
     """
     files = glob(file_path)
-    energy_list = []
-    mu_list = []
-    file_list = []
+    energy_list: list[np.ndarray] = []
+    mu_list: list[np.ndarray] = []
+    file_list: list[str] = []
 
     for file in files:
         data = np.loadtxt(file)
@@ -292,7 +393,6 @@ def prepare_group_from_QAS(
         group_list.append(Group(energy=energy, mu=mu))
         file_list.append(file)
 
-    print(len(group_list))
     return group_list, file_list
 
 
