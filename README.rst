@@ -51,7 +51,7 @@ Installation from PyPI
 
 .. code-block:: bash
 
-    pip install decomnano
+    pip install ibr-xas
 
 
 Usage
@@ -78,4 +78,4 @@ This method has a limitation when there is a significant change in the trend in 
 Citation
 --------
 
-If you use DecomNano in your research, please cite the following paper: to be submitted.
+If you use IBR-XAS in your research, please cite the following paper: to be submitted.
