@@ -215,14 +215,6 @@ class IbrXas:
             scale_tmp.append(scale)
             minimum_mu_tmp.append(minimum_mu / len(self.mu_list) + self.min_mu_list[i])
 
-        minimum_mu = minimum_mu_tmp[0]
-
-        for i in range(len(minimum_mu_tmp)):
-            minimum_mu = np.maximum(minimum_mu, minimum_mu_tmp[i])
-
-        for i in range(len(minimum_mu_tmp)):
-            minimum_mu_tmp[i] -= minimum_mu
-
         delta_mu = 0
         for i in range(len(minimum_mu_tmp)):
             delta_mu += (
@@ -235,18 +227,13 @@ class IbrXas:
         self.min_mu_list = minimum_mu_tmp
         self.scale_list = scale_tmp
 
-        # for i in range(len(self.mu_list)):
-        #     plt.plot(self.energy_list[i], self.mu_list[i] + self.min_mu_list[i])
-        # plt.show()
-        #
-
         return self
 
     def calc_bragg_iter(
         self,
         energy_range: list[float] | None = None,
         scale_range: list[float] | None = None,
-        criteria: float = 1e-5,
+        criteria: float = 1e-10,
         max_iter=200,
     ) -> Self:
         """Iterative calculation of the Bragg peaks
@@ -397,11 +384,4 @@ def prepare_group_from_QAS(
 
 
 if __name__ == "__main__":
-    file_path = "./test/Sample*.dat"
-
-    energy_list, mu_list, file_list = prepare_spectra_from_QAS(file_path)
-
-    # asx = ASXAS(energy_list, mu_list, file_list)
-
-    # asx.calc_min_mu(asx)
-    # asx.save_dat()
+    pass
