@@ -51,13 +51,13 @@ class IbrXas:
     scale_list: list[np.ndarray]
     file_list: list[str] | None
     ibr_loss: float
-    group_list: list[HasEnergyMu] | None
+    group_list: Sequence[HasEnergyMu] | None
 
     def __init__(
         self,
         energy_list: list[np.ndarray] | None = None,
         mu_list: list[np.ndarray] | None = None,
-        group_list: list[HasEnergyMu] | None = None,
+        group_list: Sequence[HasEnergyMu] | None = None,
         file_list=None,
     ) -> None:
         if group_list is not None:
