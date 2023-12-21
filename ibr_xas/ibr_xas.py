@@ -3,7 +3,7 @@
 import os
 from copy import copy
 from glob import glob
-from typing import Protocol, Self
+from typing import Protocol, Self, Sequence
 
 import numpy as np
 import scipy.optimize as opt
@@ -51,6 +51,7 @@ class IbrXas:
     scale_list: list[np.ndarray]
     file_list: list[str] | None
     ibr_loss: float
+    group_list: list[HasEnergyMu] | None
 
     def __init__(
         self,
