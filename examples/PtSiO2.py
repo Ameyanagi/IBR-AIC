@@ -144,6 +144,27 @@ def plot_group_list_comparison(
     fig.tight_layout(pad=0.5)
     fig.savefig(save_path, dpi=300)
 
+    fig, ax = plt.subplots(1, 1, figsize=(3, 3))
+
+    for i, group, label in zip(range(len(group_list)), group_list, label_list):
+        ax.plot(group.r, group.chir_mag, label=label, color=f"C{i}")
+
+    ax.xaxis.set_major_locator(ticker.MaxNLocator(5))
+    ax.xaxis.set_minor_locator(ticker.MaxNLocator(25))
+    ax.legend()
+
+    # set labels
+    ax.set_xlabel("R ($Å$)")
+    # tobe fixed
+    ax.set_ylabel("$|R|\chi(\mathrm{R})$ (Å$^{-3}$)")
+
+    ax.set_xlim(0, 6)
+    save_path = os.path.join(save_dir, f"{save_prefix}chir_mag.png")
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+
+    fig.tight_layout(pad=0.5)
+    fig.savefig(save_path, dpi=300)
+
 
 def read_and_merge_spectra(
     file_paths: list[str], fluorescence: bool = True
@@ -169,7 +190,7 @@ def read_and_merge_spectra(
             if fluorescence:
                 mu = iff / i0
             else:
-                mu = -np.log(i0 / it)
+                mu = np.log(i0 / it)
 
             if energy_grid is None:
                 energy_grid = energy
@@ -251,9 +272,15 @@ def main():
 
         scale = ix_scale.loss_spectrum(ix_scale.mu_list, ix_scale.mu_list[-1], -1)
 
-        pre_edge_kws: dict = {}
+        e0 = 11564
 
-        autobk_kws: dict = {}
+        pre_edge_kws: dict = {
+            "nnorm": 3,
+            "pre1": -180,
+            "pre2": -50,
+            "norm1": 150,
+            "norm2": 970,
+        }
 
         pre_edge(merged_bragg_peak_removed_spectrum, **pre_edge_kws)
 
@@ -262,9 +289,21 @@ def main():
         for i, merged_spectrum in enumerate(merged_spectra):
             merged_spectrum.mu = merged_spectrum.mu * scale[i] / edge_step
 
+        autobk_kws: dict = {"rbkg": 1.6, "kmin": 0, "kmax": None}
+
+        xftf_kws: dict = {
+            "kmin": 2,
+            "kmax": 8,
+            "dk": 2,
+            "kweight": 2,
+            "window": "Hanning",
+        }
+
         for group in merged_spectra:
+            group.e0 = e0
             pre_edge(group, **pre_edge_kws)
             autobk(group, **autobk_kws)
+            xftf(group, **xftf_kws)
 
         plot_group_list(merged_spectra, labels, save_prefix=f"PtSiO2_{temp}_{gas}")
 
@@ -272,7 +311,9 @@ def main():
 
         ref_file_paths: list[str] = [f"./data/PtSiO2_pellet/PtSiO2_{temp}_{gas}*.dat"]
 
-        ref_group: list[Group] = read_and_merge_spectra(ref_file_paths)
+        ref_group: list[Group] = read_and_merge_spectra(
+            ref_file_paths, fluorescence=False
+        )
         comparison_group_list: list[Group] = [
             merged_bragg_peak_removed_spectrum
         ] + ref_group
@@ -283,8 +324,10 @@ def main():
         ]
 
         for group in comparison_group_list:
+            group.e0 = 0
             pre_edge(group, **pre_edge_kws)
             autobk(group, **autobk_kws)
+            xftf(group, **xftf_kws)
 
         plot_group_list_comparison(
             comparison_group_list,

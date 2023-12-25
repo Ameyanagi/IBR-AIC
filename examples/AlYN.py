@@ -76,6 +76,28 @@ def plot_group_list(
     fig.tight_layout(pad=0.5)
     fig.savefig(save_path, dpi=300)
 
+    fig, ax = plt.subplots(1, 1, figsize=(3, 3))
+
+    group = group_list[-1]
+    label = label_list[-1]
+    ax.plot(group.r, group.chir_mag, label=label, color="C0")
+
+    ax.xaxis.set_major_locator(ticker.MaxNLocator(5))
+    ax.xaxis.set_minor_locator(ticker.MaxNLocator(25))
+    ax.legend()
+
+    # set labels
+    ax.set_xlabel("R ($Å$)")
+    # tobe fixed
+    ax.set_ylabel("$|R|\chi(\mathrm{R})$ (Å$^{-3}$)")
+
+    ax.set_xlim(0, 6)
+    save_path = os.path.join(save_dir, f"chir_mag.png")
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+
+    fig.tight_layout(pad=0.5)
+    fig.savefig(save_path, dpi=300)
+
 
 def read_and_merge_spectra(
     file_paths: list[str], fluorescence: bool = True
@@ -101,7 +123,7 @@ def read_and_merge_spectra(
             if fluorescence:
                 mu = iff / i0
             else:
-                mu = -np.log(i0 / it)
+                mu = np.log(i0 / it)
 
             if energy_grid is None:
                 energy_grid = energy
@@ -137,7 +159,7 @@ def generate_larch_group_list(ix: IbrXas) -> list[Group]:
 
 def main():
     angles = [25, 30, 35, 40, 45, 50]
-
+    # angles = [40, 45, 50]
     file_paths = [f"./data/AlYN/AlYN-R{angle}*.dat" for angle in angles]
 
     file_list = [f"AlYN {angle}deg.dat" for angle in angles]
@@ -161,9 +183,25 @@ def main():
 
     scale = ix_scale.loss_spectrum(ix_scale.mu_list, ix_scale.mu_list[-1], -1)
 
-    pre_edge_kws: dict = {}
+    e0 = 17050
 
-    autobk_kws: dict = {}
+    pre_edge_kws: dict = {
+        "nnorm": 3,
+        "pre1": -200,
+        "pre2": -100,
+        "norm1": 100,
+        "norm2": 1500,
+    }
+
+    autobk_kws: dict = {"rbkg": 1.3}
+
+    xftf_kws: dict = {
+        "kmin": 2,
+        "kmax": 12,
+        "dk": 2,
+        "kweight": 2,
+        "window": "Hanning",
+    }
 
     pre_edge(merged_bragg_peak_removed_spectrum, **pre_edge_kws)
 
@@ -173,8 +211,10 @@ def main():
         merged_spectrum.mu = merged_spectrum.mu * scale[i] / edge_step
 
     for group in merged_spectra:
+        group.e0 = e0
         pre_edge(group, **pre_edge_kws)
         autobk(group, **autobk_kws)
+        xftf(group, **xftf_kws)
 
     plot_group_list(merged_spectra, labels)
 
