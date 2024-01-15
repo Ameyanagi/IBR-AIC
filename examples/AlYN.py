@@ -28,8 +28,12 @@ plt.rcParams.update({"patch.edgecolor": "black"})
 
 
 def plot_group_list(
-    group_list: list[Group], label_list: list[str], save_dir: str = "./output/"
+    group_list: list[Group],
+    label_list: list[str],
+    save_dir: str = "./output/",
+    save_prefix: str = "",
 ):
+    e0 = group_list[-1].e0
     fig, ax = plt.subplots(1, 1, figsize=(3, 3))
 
     for i, group, label in zip(range(len(group_list)), group_list, label_list):
@@ -43,14 +47,19 @@ def plot_group_list(
 
     ax.xaxis.set_major_locator(ticker.MaxNLocator(5))
     ax.xaxis.set_minor_locator(ticker.MaxNLocator(25))
-    ax.legend(ncols=2)
+    ax.legend()
 
     # set labels
     ax.set_xlabel("Energy (eV)")
     ax.set_ylabel("Scaled raw absorption coefficient (offset = 0.1)")
 
-    save_path = os.path.join(save_dir, "energy.png")
+    save_path = os.path.join(save_dir, f"{save_prefix}energy.png")
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
+    fig.tight_layout(pad=0.5)
+    fig.savefig(save_path, dpi=300)
+
+    ax.set_xlim(e0 - 20, e0 + 80)
+    save_path = os.path.join(save_dir, f"{save_prefix}energy_xanes.png")
 
     fig.tight_layout(pad=0.5)
     fig.savefig(save_path, dpi=300)
@@ -70,8 +79,47 @@ def plot_group_list(
     ax.set_ylabel("$k^2\chi(\mathrm{k})$ (Å$^{-2}$)")
 
     ax.set_xlim(0, 15)
-    save_path = os.path.join(save_dir, "chi.png")
+    save_path = os.path.join(save_dir, f"{save_prefix}chi.png")
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
+
+    fig.tight_layout(pad=0.5)
+    fig.savefig(save_path, dpi=300)
+
+
+def plot_group_list_publication(
+    group_list: list[Group],
+    label_list: list[str],
+    save_dir: str = "./output/",
+    save_prefix: str = "",
+):
+    e0 = group_list[-1].e0
+
+    fig, ax = plt.subplots(1, 1, figsize=(3, 3))
+
+    for i, group, label in zip(range(len(group_list)), group_list, label_list):
+        ax.plot(
+            group.energy,
+            group.mu + 0.1 * (len(group_list) - i - 1),
+            label=label,
+            linewidth=0.5,
+            color=f"C{i}",
+        )
+
+    ax.xaxis.set_major_locator(ticker.MaxNLocator(5))
+    ax.xaxis.set_minor_locator(ticker.MaxNLocator(25))
+    ax.legend()
+
+    # set labels
+    ax.set_xlabel("Energy (eV)")
+    ax.set_ylabel("Scaled raw absorption coefficient (offset = 0.1)")
+
+    save_path = os.path.join(save_dir, f"{save_prefix}energy.png")
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+    fig.tight_layout(pad=0.5)
+    fig.savefig(save_path, dpi=300)
+
+    ax.set_xlim(e0 - 20, e0 + 80)
+    save_path = os.path.join(save_dir, f"{save_prefix}energy_xanes.png")
 
     fig.tight_layout(pad=0.5)
     fig.savefig(save_path, dpi=300)
@@ -80,23 +128,95 @@ def plot_group_list(
 
     group = group_list[-1]
     label = label_list[-1]
-    ax.plot(group.r, group.chir_mag, label=label, color="C0")
+    ax.plot(group.k, group.k**2 * group.chi, label=label, color="C0")
 
     ax.xaxis.set_major_locator(ticker.MaxNLocator(5))
     ax.xaxis.set_minor_locator(ticker.MaxNLocator(25))
     ax.legend()
 
     # set labels
-    ax.set_xlabel("R ($Å$)")
-    # tobe fixed
-    ax.set_ylabel("$|R|\chi(\mathrm{R})$ (Å$^{-3}$)")
+    ax.set_xlabel("k ($Å^{-1}$)")
+    ax.set_ylabel("$k^2\chi(\mathrm{k})$ (Å$^{-2}$)")
 
-    ax.set_xlim(0, 6)
-    save_path = os.path.join(save_dir, f"chir_mag.png")
+    ax.set_xlim(0, 15)
+    save_path = os.path.join(save_dir, f"{save_prefix}chi.png")
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
 
     fig.tight_layout(pad=0.5)
     fig.savefig(save_path, dpi=300)
+
+
+# def plot_group_list(
+#     group_list: list[Group], label_list: list[str], save_dir: str = "./output/"
+# ):
+#     fig, ax = plt.subplots(1, 1, figsize=(3, 3))
+#
+#     for i, group, label in zip(range(len(group_list)), group_list, label_list):
+#         ax.plot(
+#             group.energy,
+#             group.mu + 0.1 * (len(group_list) - i - 1),
+#             label=label,
+#             linewidth=0.5,
+#             color=f"C{i}",
+#         )
+#
+#     ax.xaxis.set_major_locator(ticker.MaxNLocator(5))
+#     ax.xaxis.set_minor_locator(ticker.MaxNLocator(25))
+#     ax.legend(ncols=2)
+#
+#     # set labels
+#     ax.set_xlabel("Energy (eV)")
+#     ax.set_ylabel("Scaled raw absorption coefficient (offset = 0.1)")
+#
+#     save_path = os.path.join(save_dir, "energy.png")
+#     os.makedirs(os.path.dirname(save_path), exist_ok=True)
+#
+#     fig.tight_layout(pad=0.5)
+#     fig.savefig(save_path, dpi=300)
+#
+#     fig, ax = plt.subplots(1, 1, figsize=(3, 3))
+#
+#     group = group_list[-1]
+#     label = label_list[-1]
+#     ax.plot(group.k, group.k**2 * group.chi, label=label, color="C0")
+#
+#     ax.xaxis.set_major_locator(ticker.MaxNLocator(5))
+#     ax.xaxis.set_minor_locator(ticker.MaxNLocator(25))
+#     ax.legend()
+#
+#     # set labels
+#     ax.set_xlabel("k ($Å^{-1}$)")
+#     ax.set_ylabel("$k^2\chi(\mathrm{k})$ (Å$^{-2}$)")
+#
+#     ax.set_xlim(0, 15)
+#     save_path = os.path.join(save_dir, "chi.png")
+#     os.makedirs(os.path.dirname(save_path), exist_ok=True)
+#
+#     fig.tight_layout(pad=0.5)
+#     fig.savefig(save_path, dpi=300)
+#
+#     fig, ax = plt.subplots(1, 1, figsize=(3, 3))
+#
+#     group = group_list[-1]
+#     label = label_list[-1]
+#     ax.plot(group.r, group.chir_mag, label=label, color="C0")
+#
+#     ax.xaxis.set_major_locator(ticker.MaxNLocator(5))
+#     ax.xaxis.set_minor_locator(ticker.MaxNLocator(25))
+#     ax.legend()
+#
+#     # set labels
+#     ax.set_xlabel("R ($Å$)")
+#     # tobe fixed
+#     ax.set_ylabel("$|R|\chi(\mathrm{R})$ (Å$^{-3}$)")
+#
+#     ax.set_xlim(0, 6)
+#     save_path = os.path.join(save_dir, f"chir_mag.png")
+#     os.makedirs(os.path.dirname(save_path), exist_ok=True)
+#
+#     fig.tight_layout(pad=0.5)
+#     fig.savefig(save_path, dpi=300)
+#
 
 
 def read_and_merge_spectra(
@@ -140,6 +260,91 @@ def read_and_merge_spectra(
     return merged_spectra
 
 
+def plot_group_list_comparison(
+    group_list: list[Group],
+    label_list: list[str],
+    save_dir: str = "./output/",
+    save_prefix: str = "",
+):
+    e0 = group_list[-1].e0
+    fig, ax = plt.subplots(1, 1, figsize=(3, 3))
+
+    for i, group, label in zip(range(len(group_list)), group_list, label_list):
+        ax.plot(
+            group.energy,
+            group.flat,
+            label=label,
+            linewidth=0.5,
+            color=f"C{i}",
+        )
+
+    ax.xaxis.set_major_locator(ticker.MaxNLocator(5))
+    ax.xaxis.set_minor_locator(ticker.MaxNLocator(25))
+    ax.legend()
+
+    # set labels
+    ax.set_xlabel("Energy (eV)")
+    ax.set_ylabel("Normalized absorption coefficient")
+
+    save_path = os.path.join(save_dir, f"{save_prefix}energy.png")
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+
+    fig.tight_layout(pad=0.5)
+    fig.savefig(save_path, dpi=300)
+
+    ax.set_xlim(e0 - 20, e0 + 80)
+    save_path = os.path.join(save_dir, f"{save_prefix}energy_xanes.png")
+
+    fig.tight_layout(pad=0.5)
+    fig.savefig(save_path, dpi=300)
+
+    fig, ax = plt.subplots(1, 1, figsize=(3, 3))
+
+    for i, group, label in zip(range(len(group_list)), group_list, label_list):
+        ax.plot(group.k, group.k**2 * group.chi, label=label, color=f"C{i}")
+
+    ax.xaxis.set_major_locator(ticker.MaxNLocator(5))
+    ax.xaxis.set_minor_locator(ticker.MaxNLocator(25))
+    ax.legend()
+
+    # set labels
+    ax.set_xlabel("k ($Å^{-1}$)")
+    ax.set_ylabel("$k^2\chi(\mathrm{k})$ (Å$^{-2}$)")
+
+    ax.set_xlim(0, 15)
+    save_path = os.path.join(save_dir, f"{save_prefix}chi.png")
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+
+    fig.tight_layout(pad=0.5)
+    fig.savefig(save_path, dpi=300)
+
+    fig, ax = plt.subplots(1, 1, figsize=(3, 3))
+
+    for i, group, label in zip(range(len(group_list)), group_list, label_list):
+        ax.plot(group.r, group.chir_mag, label=label, color=f"C{i}")
+
+    ax.xaxis.set_major_locator(ticker.MaxNLocator(5))
+    ax.xaxis.set_minor_locator(ticker.MaxNLocator(25))
+    ax.legend()
+
+    # set labels
+    ax.set_xlabel("R ($Å$)")
+    # tobe fixed
+    ax.set_ylabel("$|R|\chi(\mathrm{R})$ (Å$^{-3}$)")
+
+    ax.set_xlim(0, 6)
+    save_path = os.path.join(save_dir, f"{save_prefix}chir_mag.png")
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+
+    fig.tight_layout(pad=0.5)
+    fig.savefig(save_path, dpi=300)
+
+
+def read_reference_spectra(file_path: str) -> Group:
+    data = np.loadtxt(file_path)
+    return Group(energy=data[:, 0], mu=data[:, 1])
+
+
 def generate_larch_group_list(ix: IbrXas) -> list[Group]:
     energy_list = ix.energy_list
     mu_list = ix.mu_list
@@ -158,7 +363,8 @@ def generate_larch_group_list(ix: IbrXas) -> list[Group]:
 
 
 def main():
-    angles = [25, 30, 35, 40, 45, 50]
+    # angles = [25, 30, 35, 40, 45, 50]
+    angles = [25, 30, 50]
     # angles = [40, 45, 50]
     file_paths = [f"./data/AlYN/AlYN-R{angle}*.dat" for angle in angles]
 
@@ -183,21 +389,21 @@ def main():
 
     scale = ix_scale.loss_spectrum(ix_scale.mu_list, ix_scale.mu_list[-1], -1)
 
-    e0 = 17050
+    e0 = 17041.900
 
     pre_edge_kws: dict = {
         "nnorm": 3,
-        "pre1": -200,
-        "pre2": -100,
-        "norm1": 100,
-        "norm2": 1500,
+        "pre1": -152.2,
+        "pre2": -35.90,
+        "norm1": 150,
+        "norm2": 1398.848,
     }
 
     autobk_kws: dict = {"rbkg": 1.3}
 
     xftf_kws: dict = {
         "kmin": 2,
-        "kmax": 12,
+        "kmax": 7.5,
         "dk": 2,
         "kweight": 2,
         "window": "Hanning",
@@ -216,7 +422,31 @@ def main():
         autobk(group, **autobk_kws)
         xftf(group, **xftf_kws)
 
-    plot_group_list(merged_spectra, labels)
+    plot_group_list(merged_spectra, labels, save_prefix="AlYN_")
+
+    # Comprison with the reference spectrum
+
+    ref_file_path = "./data/AlYN/AlYN-manual-deglitch.xmu"
+
+    ref_group: Group = read_reference_spectra(ref_file_path)
+    comparison_group_list: list[Group] = [merged_bragg_peak_removed_spectrum, ref_group]
+
+    comparison_labels = [
+        f"AlYN IBR",
+        f"AlYN manual deglitch",
+    ]
+
+    for group in comparison_group_list:
+        group.e0 = e0
+        pre_edge(group, **pre_edge_kws)
+        autobk(group, **autobk_kws)
+        xftf(group, **xftf_kws)
+
+    plot_group_list_comparison(
+        comparison_group_list,
+        comparison_labels,
+        save_prefix=f"AlYN_comparison_",
+    )
 
 
 if __name__ == "__main__":

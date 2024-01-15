@@ -12,7 +12,7 @@ from larch.xafs import autobk, pre_edge, xftf
 from ibr_xas import IbrXas
 
 plt.style.use(["science", "nature", "bright"])
-font_size = 8
+font_size = 11
 plt.rcParams.update({"font.size": font_size})
 plt.rcParams.update({"axes.labelsize": font_size})
 plt.rcParams.update({"xtick.labelsize": font_size})
@@ -32,6 +32,7 @@ def plot_group_list(
     label_list: list[str],
     save_dir: str = "./output/",
     save_prefix: str = "",
+    ax_ext=None,
 ):
     e0 = group_list[-1].e0
     fig, ax = plt.subplots(1, 1, figsize=(3, 3))
@@ -45,6 +46,15 @@ def plot_group_list(
             color=f"C{i}",
         )
 
+        if ax_ext is not None:
+            ax_ext.plot(
+                group.energy,
+                group.mu + 0.1 * (len(group_list) - i - 1),
+                label=label,
+                linewidth=0.5,
+                color=f"C{i}",
+            )
+
     ax.xaxis.set_major_locator(ticker.MaxNLocator(5))
     ax.xaxis.set_minor_locator(ticker.MaxNLocator(25))
     ax.legend()
@@ -57,6 +67,12 @@ def plot_group_list(
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
     fig.tight_layout(pad=0.5)
     fig.savefig(save_path, dpi=300)
+
+    if ax_ext is not None:
+        ax.xaxis.set_major_locator(ticker.MaxNLocator(4))
+        ax.xaxis.set_minor_locator(ticker.MaxNLocator(20))
+        ax_ext.set_xlabel("Energy (eV)")
+        ax_ext.set_ylabel("Scaled raw absorption coefficient\n(offset = 0.1)")
 
     ax.set_xlim(e0 - 20, e0 + 80)
     save_path = os.path.join(save_dir, f"{save_prefix}energy_xanes.png")
@@ -91,6 +107,7 @@ def plot_group_list_comparison(
     label_list: list[str],
     save_dir: str = "./output/",
     save_prefix: str = "",
+    ax_ext=None,
 ):
     e0 = group_list[-1].e0
     fig, ax = plt.subplots(1, 1, figsize=(3, 3))
@@ -104,19 +121,34 @@ def plot_group_list_comparison(
             color=f"C{i}",
         )
 
+        if ax_ext is not None:
+            ax_ext[0].plot(
+                group.energy,
+                group.flat,
+                label=label,
+                linewidth=0.5,
+                color=f"C{i}",
+            )
+
     ax.xaxis.set_major_locator(ticker.MaxNLocator(5))
     ax.xaxis.set_minor_locator(ticker.MaxNLocator(25))
     ax.legend()
 
     # set labels
     ax.set_xlabel("Energy (eV)")
-    ax.set_ylabel("Scaled raw absorption coefficient (offset = 0.1)")
+    ax.set_ylabel("Normalized absorption coefficient")
 
     save_path = os.path.join(save_dir, f"{save_prefix}energy.png")
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
 
     fig.tight_layout(pad=0.5)
     fig.savefig(save_path, dpi=300)
+
+    if ax_ext is not None:
+        ax_ext[0].xaxis.set_major_locator(ticker.MaxNLocator(4))
+        ax_ext[0].xaxis.set_minor_locator(ticker.MaxNLocator(20))
+        ax_ext[0].set_xlabel("Energy (eV)")
+        ax_ext[0].set_ylabel("Normalized absorption coefficient")
 
     ax.set_xlim(e0 - 20, e0 + 80)
     save_path = os.path.join(save_dir, f"{save_prefix}energy_xanes.png")
@@ -128,6 +160,11 @@ def plot_group_list_comparison(
 
     for i, group, label in zip(range(len(group_list)), group_list, label_list):
         ax.plot(group.k, group.k**2 * group.chi, label=label, color=f"C{i}")
+
+        if ax_ext is not None:
+            ax_ext[1].plot(
+                group.k, group.k**2 * group.chi, label=label, color=f"C{i}"
+            )
 
     ax.xaxis.set_major_locator(ticker.MaxNLocator(5))
     ax.xaxis.set_minor_locator(ticker.MaxNLocator(25))
@@ -144,10 +181,20 @@ def plot_group_list_comparison(
     fig.tight_layout(pad=0.5)
     fig.savefig(save_path, dpi=300)
 
+    if ax_ext is not None:
+        ax_ext[1].xaxis.set_major_locator(ticker.MaxNLocator(4))
+        ax_ext[1].xaxis.set_minor_locator(ticker.MaxNLocator(20))
+        ax_ext[1].set_xlabel("k ($Å^{-1}$)")
+        ax_ext[1].set_ylabel("$k^2\chi(\mathrm{k})$ (Å$^{-2}$)")
+        ax_ext[1].set_xlim(0, 15)
+
     fig, ax = plt.subplots(1, 1, figsize=(3, 3))
 
     for i, group, label in zip(range(len(group_list)), group_list, label_list):
         ax.plot(group.r, group.chir_mag, label=label, color=f"C{i}")
+
+        if ax_ext is not None:
+            ax_ext[2].plot(group.r, group.chir_mag, label=label, color=f"C{i}")
 
     ax.xaxis.set_major_locator(ticker.MaxNLocator(5))
     ax.xaxis.set_minor_locator(ticker.MaxNLocator(25))
@@ -164,6 +211,13 @@ def plot_group_list_comparison(
 
     fig.tight_layout(pad=0.5)
     fig.savefig(save_path, dpi=300)
+
+    if ax_ext is not None:
+        ax_ext[2].xaxis.set_major_locator(ticker.MaxNLocator(4))
+        ax_ext[2].xaxis.set_minor_locator(ticker.MaxNLocator(20))
+        ax_ext[2].set_xlabel("R ($Å$)")
+        ax_ext[2].set_ylabel("$|R|\chi(\mathrm{R})$ (Å$^{-3}$)")
+        ax_ext[2].set_xlim(0, 6)
 
 
 def read_and_merge_spectra(
@@ -234,7 +288,25 @@ def main():
         {"temp": "RT", "gas": "N2"},
     ]
 
-    for experiment in experiments:
+    ncols_plot_all = 2
+    nrows_plot_all = 2
+    fig_plot_all, ax_plot_all = plt.subplots(
+        nrows=nrows_plot_all,
+        ncols=ncols_plot_all,
+        figsize=(3 * ncols_plot_all, 3 * nrows_plot_all),
+    )
+
+    ncols_compare = 3
+    nrows_compare = 4
+    fig_compare, ax_compare = plt.subplots(
+        nrows=nrows_compare,
+        ncols=ncols_compare,
+        figsize=(3 * ncols_compare, 3 * nrows_compare),
+    )
+
+    ax_plot_all = ax_plot_all.flatten()
+
+    for j, experiment in enumerate(experiments):
         temp = experiment["temp"]
         gas = experiment["gas"]
 
@@ -305,7 +377,12 @@ def main():
             autobk(group, **autobk_kws)
             xftf(group, **xftf_kws)
 
-        plot_group_list(merged_spectra, labels, save_prefix=f"PtSiO2_{temp}_{gas}")
+        plot_group_list(
+            merged_spectra,
+            labels,
+            save_prefix=f"PtSiO2_{temp}_{gas}",
+            ax_ext=ax_plot_all[j],
+        )
 
         # Comprison with the reference spectrum
 
@@ -333,7 +410,52 @@ def main():
             comparison_group_list,
             comparison_labels,
             save_prefix=f"PtSiO2_{temp}_{gas}_comparison",
+            ax_ext=ax_compare[j],
         )
+
+    figure_labels_plot_all = ["(a)", "(b)", "(c)", "(d)"]
+    figure_labels_compare = [
+        "(a)",
+        "(b)",
+        "(c)",
+        "(d)",
+        "(e)",
+        "(f)",
+        "(g)",
+        "(h)",
+        "(i)",
+        "(j)",
+        "(k)",
+        "(l)",
+    ]
+
+    ax_plot_all[0].legend(loc="lower right")
+
+    ax_compare[0, 0].legend(loc="lower right")
+
+    for ax_item, label in zip(ax_plot_all, figure_labels_plot_all):
+        ax_item.text(
+            x=0.02,
+            y=0.94,
+            s=f"{label}",
+            transform=ax_item.transAxes,
+            fontsize=font_size,
+        )
+
+    for ax_item, label in zip(ax_compare.flatten(), figure_labels_compare):
+        ax_item.text(
+            x=0.02,
+            y=0.94,
+            s=f"{label}",
+            transform=ax_item.transAxes,
+            fontsize=font_size,
+        )
+
+    fig_plot_all.tight_layout(pad=0.5)
+    fig_plot_all.savefig("./output/publication_PtSiO2_all.png", dpi=300)
+
+    fig_compare.tight_layout(pad=0.5)
+    fig_compare.savefig("./output/publication_PtSiO2_comparison.png", dpi=300)
 
 
 if __name__ == "__main__":
