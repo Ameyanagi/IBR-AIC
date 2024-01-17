@@ -1,6 +1,5 @@
 numpy
 matplotlib
 scienceplots
-git+https://github.com/Ameyanagi/IBR-XAS
 xraylarch
 

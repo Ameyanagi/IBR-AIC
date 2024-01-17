@@ -9,7 +9,7 @@ from larch import Group
 from larch.io import merge_groups
 from larch.xafs import autobk, pre_edge, xftf
 
-from ibr_xas import IbrXas
+from ibr_aic import IbrAic
 
 plt.style.use(["science", "nature", "bright"])
 font_size = 11
@@ -91,7 +91,7 @@ def plot_group_list(
     ax.legend()
 
     # set labels
-    ax.set_xlabel("k ($Å^{-1}$)")
+    ax.set_xlabel("$k$ ($Å^{-1}$)")
     ax.set_ylabel("$k^2\chi(\mathrm{k})$ (Å$^{-2}$)")
 
     ax.set_xlim(0, 15)
@@ -171,8 +171,8 @@ def plot_group_list_comparison(
     ax.legend()
 
     # set labels
-    ax.set_xlabel("k ($Å^{-1}$)")
-    ax.set_ylabel("$k^2\chi(\mathrm{k})$ (Å$^{-2}$)")
+    ax.set_xlabel("$k$ ($Å^{-1}$)")
+    ax.set_ylabel("$k^2\chi(\mathrm{k})$ ($\mathrm{\AA}^{-2}$)")
 
     ax.set_xlim(0, 15)
     save_path = os.path.join(save_dir, f"{save_prefix}chi.png")
@@ -184,8 +184,8 @@ def plot_group_list_comparison(
     if ax_ext is not None:
         ax_ext[1].xaxis.set_major_locator(ticker.MaxNLocator(4))
         ax_ext[1].xaxis.set_minor_locator(ticker.MaxNLocator(20))
-        ax_ext[1].set_xlabel("k ($Å^{-1}$)")
-        ax_ext[1].set_ylabel("$k^2\chi(\mathrm{k})$ (Å$^{-2}$)")
+        ax_ext[1].set_xlabel("$k$ ($\mathrm{\AA}^{-1}$)")
+        ax_ext[1].set_ylabel("$k^2\chi(\mathrm{k})$ ($\mathrm{\AA}^{-2}$)")
         ax_ext[1].set_xlim(0, 15)
 
     fig, ax = plt.subplots(1, 1, figsize=(3, 3))
@@ -201,9 +201,9 @@ def plot_group_list_comparison(
     ax.legend()
 
     # set labels
-    ax.set_xlabel("R ($Å$)")
+    ax.set_xlabel("$R$ ($Å$)")
     # tobe fixed
-    ax.set_ylabel("$|R|\chi(\mathrm{R})$ (Å$^{-3}$)")
+    ax.set_ylabel("$|\chi(R)$ ($\mathrm{\AA}^{-3}$)")
 
     ax.set_xlim(0, 6)
     save_path = os.path.join(save_dir, f"{save_prefix}chir_mag.png")
@@ -215,8 +215,8 @@ def plot_group_list_comparison(
     if ax_ext is not None:
         ax_ext[2].xaxis.set_major_locator(ticker.MaxNLocator(4))
         ax_ext[2].xaxis.set_minor_locator(ticker.MaxNLocator(20))
-        ax_ext[2].set_xlabel("R ($Å$)")
-        ax_ext[2].set_ylabel("$|R|\chi(\mathrm{R})$ (Å$^{-3}$)")
+        ax_ext[2].set_xlabel("$R$ ($\mathrm{\AA}$)")
+        ax_ext[2].set_ylabel("$|\chi(R)|$ ($\mathrm{\AA}^{-3}$)")
         ax_ext[2].set_xlim(0, 6)
 
 
@@ -261,7 +261,7 @@ def read_and_merge_spectra(
     return merged_spectra
 
 
-def generate_larch_group_list(ix: IbrXas) -> list[Group]:
+def generate_larch_group_list(ix: IbrAic) -> list[Group]:
     energy_list = ix.energy_list
     mu_list = ix.mu_list
     min_mu_list = ix.min_mu_list
@@ -287,6 +287,12 @@ def main():
         {"temp": "RT", "gas": "CO"},
         {"temp": "RT", "gas": "N2"},
     ]
+
+    label_dict: dict = {
+        "H2": "$\mathrm{H_2}$",
+        "N2": "$\mathrm{N_2}$",
+        "CO": "CO",
+    }
 
     ncols_plot_all = 2
     nrows_plot_all = 2
@@ -322,13 +328,16 @@ def main():
         else:
             temp_label: str = f"{temp}$^\circ$C"
 
-        labels = [f"Pt/SiO$_2$ {temp_label} {gas} {angle}$^\circ$" for angle in angles]
+        labels = [
+            f"Pt/SiO$_2$ {temp_label} {label_dict[gas]} {angle}$^\circ$"
+            for angle in angles
+        ]
         merged_spectra = read_and_merge_spectra(file_paths)
 
         print(len(merged_spectra))
 
-        # Remove the bragg peak with IbrXas
-        ix = IbrXas(group_list=merged_spectra, file_list=file_list)
+        # Remove the bragg peak with IbrAic
+        ix = IbrAic(group_list=merged_spectra, file_list=file_list)
 
         ix.calc_bragg_iter().save_dat()
 
@@ -338,11 +347,11 @@ def main():
         merged_bragg_peak_removed_spectrum = merge_groups(group_list)
 
         merged_spectra.append(merged_bragg_peak_removed_spectrum)
-        labels.append(f"Pt/SiO$_2$ {temp_label} {gas} IBR")
+        labels.append(f"Pt/SiO$_2$ {temp_label} {label_dict[gas]}\nIBR-AIC")
 
-        ix_scale = IbrXas(group_list=merged_spectra)
+        ia_scale = IbrAic(group_list=merged_spectra)
 
-        scale = ix_scale.loss_spectrum(ix_scale.mu_list, ix_scale.mu_list[-1], -1)
+        scale = ia_scale.loss_spectrum(ia_scale.mu_list, ia_scale.mu_list[-1], -1)
 
         e0 = 11564
 
@@ -396,8 +405,8 @@ def main():
         ] + ref_group
 
         comparison_labels = [
-            f"Pt/SiO$_2$ {temp_label} {gas} IBR",
-            f"Pt/SiO$_2$ {temp_label} {gas} ref",
+            f"Pt/SiO$_2$ {temp_label} {label_dict[gas]}\nIBR-AIC",
+            f"Pt/SiO$_2$ {temp_label} {label_dict[gas]} ref",
         ]
 
         for group in comparison_group_list:
@@ -415,23 +424,29 @@ def main():
 
     figure_labels_plot_all = ["(a)", "(b)", "(c)", "(d)"]
     figure_labels_compare = [
-        "(a)",
-        "(b)",
-        "(c)",
-        "(d)",
-        "(e)",
-        "(f)",
-        "(g)",
-        "(h)",
-        "(i)",
-        "(j)",
-        "(k)",
-        "(l)",
+        "(a1)",
+        "(a2)",
+        "(a3)",
+        "(b1)",
+        "(b2)",
+        "(b3)",
+        "(c1)",
+        "(c2)",
+        "(c3)",
+        "(d1)",
+        "(d2)",
+        "(d3)",
     ]
 
-    ax_plot_all[0].legend(loc="lower right")
+    legend = ax_plot_all[0].legend(loc="lower right")
 
-    ax_compare[0, 0].legend(loc="lower right")
+    for t in legend.get_texts():
+        t.set_ha("right")
+
+    legend = ax_compare[0, 0].legend(loc="lower right")
+
+    for t in legend.get_texts():
+        t.set_ha("right")
 
     for ax_item, label in zip(ax_plot_all, figure_labels_plot_all):
         ax_item.text(
@@ -444,11 +459,11 @@ def main():
 
     for ax_item, label in zip(ax_compare.flatten(), figure_labels_compare):
         ax_item.text(
-            x=0.02,
-            y=0.94,
+            x=0.05,
+            y=0.90,
             s=f"{label}",
             transform=ax_item.transAxes,
-            fontsize=font_size,
+            fontsize=font_size * 1.2,
         )
 
     fig_plot_all.tight_layout(pad=0.5)

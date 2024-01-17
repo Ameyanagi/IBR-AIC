@@ -48,9 +48,9 @@ clean-test: ## remove test and coverage artifacts
 	rm -fr .pytest_cache
 
 lint/flake8: ## check style with flake8
-	flake8 ibr_xas tests
+	flake8 ibr_aic tests
 lint/black: ## check style with black
-	black --check ibr_xas tests
+	black --check ibr_aic tests
 
 lint: lint/flake8 lint/black ## check style
 
@@ -61,15 +61,15 @@ test-all: ## run tests on every Python version with tox
 	tox
 
 coverage: ## check code coverage quickly with the default Python
-	coverage run --source ibr_xas -m pytest
+	coverage run --source ibr_aic -m pytest
 	coverage report -m
 	coverage html
 	$(BROWSER) htmlcov/index.html
 
 docs: ## generate Sphinx HTML documentation, including API docs
-	rm -f docs/ibr_xas.rst
+	rm -f docs/ibr_aic.rst
 	rm -f docs/modules.rst
-	sphinx-apidoc -o docs/ ibr_xas
+	sphinx-apidoc -o docs/ ibr_aic
 	$(MAKE) -C docs clean
 	$(MAKE) -C docs html
 	$(BROWSER) docs/_build/html/index.html

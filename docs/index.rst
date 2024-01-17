@@ -1,4 +1,4 @@
-Welcome to IBR-XAS's documentation!
+Welcome to IBR-AIC's documentation!
 ======================================
 
 .. toctree::

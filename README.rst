@@ -1,24 +1,24 @@
 =========
-Iterative Bragg peak Removal of X-ray Absorption Spectrum (IBR-XAS)
+Iterative Bragg Peak Removal with Automatic Intensity Correction (IBR-AIC) for X-ray Absorption Spectroscopy
 =========
 
 
 .. image:: https://img.shields.io/pypi/v/decomnano.svg
-        :target: https://pypi.python.org/pypi/ibr-xas
+        :target: https://pypi.python.org/pypi/ibr-aic
 
-.. image:: https://github.com/Ameyanagi/IBR-XAS/actions/workflows/documentation.yaml/badge.svg
-        :target: https://ameyanagi.github.io/IBR-XAS/index.html
+.. image:: https://github.com/Ameyanagi/IBR-AIC/actions/workflows/documentation.yaml/badge.svg
+        :target: https://ameyanagi.github.io/IBR-AIC/index.html
         :alt: Documentation Status
 
 This package amims to provide a method of removing Bragg peaks from X-ray absorption spectra. This method can be applied for both transmission and fluorescence mode of XAS, with the aid of varing a angle of sample.
 
 * Free software: MIT license
-* Documentation: https://ameyanagi.github.io/IBR-XAS/index.html.
+* Documentation: https://ameyanagi.github.io/IBR-AIC/index.html.
 
 Requirements
 ------------
 
-IBR-XAS relies on numpy_ and scipy_ package as dependencies. Please install numpy_ and scipy_.\
+IBR-AIC relies on numpy_ and scipy_ package as dependencies. Please install numpy_ and scipy_.\
 The requirements can be optionally installed through requirements.txt by following command.
 
 Group from xraylarch_ package can also be used for the input of the calculation, if so,  please install xraylarch_ through pip.
@@ -38,7 +38,7 @@ Installation currently done through following command.
 
 .. code-block:: bash
 
-   pip install git+https://github.com/Ameyanagi/IBR-XAS
+   pip install git+https://github.com/Ameyanagi/IBR-AIC
 
 .. Detailed instructions for installation are available in the `installation documentation`_.
 
@@ -51,7 +51,7 @@ Installation from PyPI
 
 .. code-block:: bash
 
-    pip install ibr-xas
+    pip install ibr-aic
 
 
 Usage
@@ -63,7 +63,7 @@ Python API
 Detailed instructions for usage are available in the `API documentation`_.
 The decomanano package can be imported and used in python scripts.
 
-.. _API documentation: https://ameyanagi.github.io/IBR-XAS/modules.html
+.. _API documentation: https://ameyanagi.github.io/IBR-AIC/modules.html
 
 Limitation
 ----------
@@ -78,4 +78,4 @@ This method has a limitation when there is a significant change in the trend in 
 Citation
 --------
 
-If you use IBR-XAS in your research, please cite the following paper: to be submitted.
+If you use IBR-AIC in your research, please cite the following paper: to be submitted.

@@ -10,7 +10,7 @@ from larch import Group
 from larch.io import merge_groups
 from larch.xafs import autobk, pre_edge, xftf
 
-from ibr_xas import IbrXas
+from ibr_aic import IbrAic
 
 plt.style.use(["science", "nature", "bright"])
 font_size = 8
@@ -107,7 +107,7 @@ def read_and_merge_spectra(
     return merged_spectra
 
 
-def generate_larch_group_list(ix: IbrXas) -> list[Group]:
+def generate_larch_group_list(ix: IbrAic) -> list[Group]:
     energy_list = ix.energy_list
     mu_list = ix.mu_list
     min_mu_list = ix.min_mu_list
@@ -150,8 +150,8 @@ def main():
         labels = [f"Pt/SiO$_2$ {temp_label} {gas} {angle}$^\circ$" for angle in angles]
         merged_spectra = read_and_merge_spectra(file_paths)
 
-        # Remove the bragg peak with IbrXas
-        ix = IbrXas(group_list=merged_spectra, file_list=file_list)
+        # Remove the bragg peak with IbrAic
+        ix = IbrAic(group_list=merged_spectra, file_list=file_list)
 
         ix.calc_bragg_iter().save_dat()
 
@@ -163,13 +163,13 @@ def main():
         merged_spectra.append(merged_bragg_peak_removed_spectrum)
         labels.append(f"Pt/SiO$_2$ {temp_label} {gas} IBR")
 
-        ix_scale = IbrXas(group_list=merged_spectra)
+        ia_scale = IbrAic(group_list=merged_spectra)
 
         scale_dict = {}
 
         for weight in ["MSRE", "MAE", "MSE"]:
-            scale_dict[weight] = ix_scale.loss_spectrum(
-                ix_scale.mu_list, ix_scale.mu_list[-1], -1, weight=weight
+            scale_dict[weight] = ia_scale.loss_spectrum(
+                ia_scale.mu_list, ia_scale.mu_list[-1], -1, weight=weight
             )
 
         e0 = 11564

@@ -1,21 +1,21 @@
-ibr\_xas package
+ibr\_aic package
 ================
 
 Submodules
 ----------
 
-ibr\_xas.cli module
+ibr\_aic.cli module
 -------------------
 
-.. automodule:: ibr_xas.cli
+.. automodule:: ibr_aic.cli
    :members:
    :undoc-members:
    :show-inheritance:
 
-ibr\_xas.ibr\_xas module
+ibr\_aic.ibr\_aic module
 ------------------------
 
-.. automodule:: ibr_xas.ibr_xas
+.. automodule:: ibr_aic.ibr_aic
    :members:
    :undoc-members:
    :show-inheritance:
@@ -23,7 +23,7 @@ ibr\_xas.ibr\_xas module
 Module contents
 ---------------
 
-.. automodule:: ibr_xas
+.. automodule:: ibr_aic
    :members:
    :undoc-members:
    :show-inheritance:

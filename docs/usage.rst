@@ -11,9 +11,9 @@ Following is an example usage of the class.
 
          .. code-block:: python
 
-            from ibr_xas import IbrXas
+            from ibr_aic import IbrAic
 
             energy_list, mu_list, file_list = prepare_spectra_from_qas(file_path)
 
-            ix = IbrXas(energy_list, mu_list, file_list)
-            ix.calc_bragg_iter().save_dat()
+            ia = IbrAic(energy_list, mu_list, file_list)
+            ia.calc_bragg_iter().save_dat()

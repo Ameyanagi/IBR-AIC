@@ -10,7 +10,7 @@ from larch import Group
 from larch.io import merge_groups
 from larch.xafs import autobk, pre_edge, xftf
 
-from ibr_xas import IbrXas
+from ibr_aic import IbrAic
 
 plt.style.use(["science", "nature", "bright"])
 font_size = 12
@@ -23,7 +23,14 @@ plt.rcParams.update({"legend.fontsize": font_size - 2})
 plt.rcParams.update({"legend.frameon": True})
 plt.rcParams.update({"legend.framealpha": 1.0})
 plt.rcParams.update({"legend.fancybox": True})
-plt.rcParams.update({"legend.numpoints": 1}) plt.rcParams.update({"patch.linewidth": 0.5}) plt.rcParams.update({"patch.edgecolor": "black"}) def plot_group_list( group_list: list[Group], label_list: list[str],
+plt.rcParams.update({"legend.numpoints": 1})
+plt.rcParams.update({"patch.linewidth": 0.5})
+plt.rcParams.update({"patch.edgecolor": "black"})
+
+
+def plot_group_list(
+    group_list: list[Group],
+    label_list: list[str],
     save_dir: str = "./output/",
     save_prefix: str = "",
 ):
@@ -197,7 +204,7 @@ def read_and_merge_spectra(
     return merged_spectra
 
 
-def generate_larch_group_list(ix: IbrXas) -> list[Group]:
+def generate_larch_group_list(ix: IbrAic) -> list[Group]:
     energy_list = ix.energy_list
     mu_list = ix.mu_list
     min_mu_list = ix.min_mu_list
@@ -222,9 +229,9 @@ def main():
     labels = [f"AlYN {angle}$^\circ$" for angle in angles]
     merged_spectra = read_and_merge_spectra(file_paths)
 
-    # Remove the bragg peak with IbrXas
+    # Remove the bragg peak with IbrAic
 
-    ix = IbrXas(group_list=merged_spectra, file_list=file_list)
+    ix = IbrAic(group_list=merged_spectra, file_list=file_list)
 
     ix.calc_bragg_iter()
 
@@ -236,13 +243,13 @@ def main():
     merged_spectra.append(merged_bragg_peak_removed_spectrum)
     labels.append("AlYN IBR")
 
-    ix_scale = IbrXas(group_list=merged_spectra)
+    ia_scale = IbrAic(group_list=merged_spectra)
 
     scale_dict = {}
 
     for weight in ["MSRE", "MAE", "MSE"]:
-        scale_dict[weight] = ix_scale.loss_spectrum(
-            ix_scale.mu_list, ix_scale.mu_list[0], 0, weight=weight
+        scale_dict[weight] = ia_scale.loss_spectrum(
+            ia_scale.mu_list, ia_scale.mu_list[0], 0, weight=weight
         )
 
     print(scale_dict)
@@ -278,7 +285,7 @@ def main():
     plot_group_list_publication(
         group_list=merged_spectra,
         label_list=labels,
-        save_prefix="publication_AlYN_comparison",
+        save_prefix="publication_AlYN_comparison_loss",
         scale_dict=scale_dict,
         edge_step=edge_step,
         plot_dict_list=["MSRE", "MAE", "MSE"],

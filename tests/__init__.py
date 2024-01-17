@@ -1,1 +1,1 @@
-"""Unit test package for ibr_xas."""
+"""Unit test package for ibr_aic."""
