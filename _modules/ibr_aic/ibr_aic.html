@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ibr_aic.ibr_aic &mdash; IBR-AIC 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=fa44fd50" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../_static/documentation_options.js?v=01f34227"></script>
+        <script src="../../_static/doctools.js?v=888ff710"></script>
+        <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            IBR-AIC
+          </a>
+              <div class="version">
+                0.1.0
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../readme.html">Iterative Bragg Peak Removal with Automatic Intensity Correction (IBR-AIC) for X-ray Absorption Spectroscopy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../usage.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../modules.html">ibr_aic</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../contributing.html">Contributing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../authors.html">Credits</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../history.html">History</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">IBR-AIC</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ibr_aic.ibr_aic</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ibr_aic.ibr_aic</h1><div class="highlight"><pre>
+<span></span><span class="c1"># pright: strict</span>
+
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">from</span> <span class="nn">copy</span> <span class="kn">import</span> <span class="n">copy</span>
+<span class="kn">from</span> <span class="nn">glob</span> <span class="kn">import</span> <span class="n">glob</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Protocol</span><span class="p">,</span> <span class="n">Self</span><span class="p">,</span> <span class="n">Sequence</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">scipy.optimize</span> <span class="k">as</span> <span class="nn">opt</span>
+
+
+<div class="viewcode-block" id="HasEnergyMu">
+<a class="viewcode-back" href="../../ibr_aic.html#ibr_aic.ibr_aic.HasEnergyMu">[docs]</a>
+<span class="k">class</span> <span class="nc">HasEnergyMu</span><span class="p">(</span><span class="n">Protocol</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Protocol to define the class that has energy and mu</span>
+
+<span class="sd">    This class is used for type hinting. Group class from xraylarch also has a energy and mu attributes, and can be used as an input for IbrAic class.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">energy</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+    <span class="n">mu</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span></div>
+
+
+
+<div class="viewcode-block" id="IbrAic">
+<a class="viewcode-back" href="../../ibr_aic.html#ibr_aic.ibr_aic.IbrAic">[docs]</a>
+<span class="k">class</span> <span class="nc">IbrAic</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;IbrAic: A class to remove Bragg peaks from XAS spectra</span>
+
+<span class="sd">    Usage:</span>
+<span class="sd">        Following is an example usage of the class.\n</span>
+<span class="sd">        1. Prepare list of energy, and mu. The energy and mu has to be in the format of list of np.ndarray.\n</span>
+<span class="sd">        2. Create an instance of the class.\n</span>
+<span class="sd">        3. Call the calc_bragg_iter method to iteratively calculate the Bragg peaks.\n</span>
+<span class="sd">        4. Call the save_dat method to save the spectra.\n</span>
+
+<span class="sd">        .. code-block:: python</span>
+
+<span class="sd">            from ibr_aic import IbrAic</span>
+
+<span class="sd">            energy_list, mu_list, file_list = prepare_spectra_from_qas(file_path)</span>
+
+<span class="sd">            ix = IbrAic(energy_list, mu_list, file_list)</span>
+<span class="sd">            ix.calc_bragg_iter().save_dat()</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        energy_list (list[np.ndarray]): List of the energy</span>
+<span class="sd">        mu_list (list[np.ndarray]): List of the mu</span>
+<span class="sd">        group_list (list[HasEnergyMu]): List of the group</span>
+<span class="sd">        file_list (list[str]): List of the file path</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">energy_list</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span>
+    <span class="n">mu_list</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span>
+    <span class="n">min_mu_list</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span>
+    <span class="n">scale_list</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span>
+    <span class="n">file_list</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span>
+    <span class="n">ibr_loss</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">group_list</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">HasEnergyMu</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">energy_list</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">mu_list</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">group_list</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">HasEnergyMu</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">file_list</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">group_list</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">energy_list</span> <span class="o">=</span> <span class="p">[</span><span class="n">group</span><span class="o">.</span><span class="n">energy</span> <span class="k">for</span> <span class="n">group</span> <span class="ow">in</span> <span class="n">group_list</span><span class="p">]</span>
+            <span class="n">mu_list</span> <span class="o">=</span> <span class="p">[</span><span class="n">group</span><span class="o">.</span><span class="n">mu</span> <span class="k">for</span> <span class="n">group</span> <span class="ow">in</span> <span class="n">group_list</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">energy_list</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">mu_list</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Please provide group_list or energy_list and mu_list&quot;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">energy_list</span> <span class="o">=</span> <span class="n">energy_list</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mu_list</span> <span class="o">=</span> <span class="n">mu_list</span>
+
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">energy_list</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mu_list</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">file_list</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">file_list</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mu_list</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">file_list</span> <span class="o">=</span> <span class="n">file_list</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">interpolate</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">min_mu_list</span> <span class="o">=</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">mu</span><span class="p">)</span> <span class="k">for</span> <span class="n">mu</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">mu_list</span><span class="p">]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">scale_list</span> <span class="o">=</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">mu</span><span class="p">)</span> <span class="k">for</span> <span class="n">mu</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">mu_list</span><span class="p">]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">ibr_loss</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">inf</span>
+
+        <span class="k">if</span> <span class="n">file_list</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">file_list</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mu_list</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">file_list</span> <span class="o">=</span> <span class="n">file_list</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">file_list</span> <span class="o">=</span> <span class="kc">None</span>
+
+<div class="viewcode-block" id="IbrAic.interpolate">
+<a class="viewcode-back" href="../../ibr_aic.html#ibr_aic.ibr_aic.IbrAic.interpolate">[docs]</a>
+    <span class="k">def</span> <span class="nf">interpolate</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Self</span><span class="p">:</span>
+        <span class="n">energy_grid</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">energy_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">energy_list</span><span class="p">)):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">mu_list</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">interp</span><span class="p">(</span>
+                <span class="n">energy_grid</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">energy_list</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">mu_list</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">energy_list</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">energy_grid</span>
+
+        <span class="k">return</span> <span class="bp">self</span></div>
+
+
+<div class="viewcode-block" id="IbrAic.loss_func">
+<a class="viewcode-back" href="../../ibr_aic.html#ibr_aic.ibr_aic.IbrAic.loss_func">[docs]</a>
+    <span class="k">def</span> <span class="nf">loss_func</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">x</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+        <span class="n">spectrum</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+        <span class="n">reference</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+        <span class="n">index</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="nb">tuple</span><span class="p">,</span>
+        <span class="n">weight</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;MSRE&quot;</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Mean square root error function for the optimization of the scaling factor</span>
+
+<span class="sd">        The mean square is used for calculation of the loss function. If the mean square root or the mean absolute error is used, the optimization will be biased to the Bragg peaks, and there will be a large error around the Bragg peaks.</span>
+<span class="sd">        The use of square root will enhance the possibility of fitting to the baseline spectrum.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            x (float): scaling factor</span>
+<span class="sd">            spectrum (np.ndarray): spectrum to be scaled</span>
+<span class="sd">            reference (np.ndarray): reference spectrum</span>
+<span class="sd">            index (np.ndarray): index of the energy range to be used for the calculation of the loss function</span>
+<span class="sd">            weight (str): weighting ot calculate the scale. default is mean square root error (MSRE). Other option is mean absolute error (MAE), and mean squared error (MSE).</span>
+
+<span class="sd">        Return:</span>
+<span class="sd">            np.ndarray: mean square root error</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">scaled_spectrum</span> <span class="o">=</span> <span class="n">spectrum</span><span class="p">[</span><span class="n">index</span><span class="p">]</span> <span class="o">*</span> <span class="n">x</span>
+
+        <span class="k">if</span> <span class="n">weight</span> <span class="o">==</span> <span class="s2">&quot;MSRE&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">scaled_spectrum</span> <span class="o">-</span> <span class="n">reference</span><span class="p">[</span><span class="n">index</span><span class="p">]))</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span>
+                <span class="n">scaled_spectrum</span>
+            <span class="p">)</span>
+        <span class="k">elif</span> <span class="n">weight</span> <span class="o">==</span> <span class="s2">&quot;MAE&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">scaled_spectrum</span> <span class="o">-</span> <span class="n">reference</span><span class="p">[</span><span class="n">index</span><span class="p">])</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span>
+                <span class="n">scaled_spectrum</span>
+            <span class="p">)</span>
+        <span class="k">elif</span> <span class="n">weight</span> <span class="o">==</span> <span class="s2">&quot;MSE&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">((</span><span class="n">scaled_spectrum</span> <span class="o">-</span> <span class="n">reference</span><span class="p">[</span><span class="n">index</span><span class="p">])</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span>
+                <span class="n">scaled_spectrum</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">scaled_spectrum</span> <span class="o">-</span> <span class="n">reference</span><span class="p">[</span><span class="n">index</span><span class="p">]))</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span>
+                <span class="n">scaled_spectrum</span>
+            <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="IbrAic.loss_spectrum">
+<a class="viewcode-back" href="../../ibr_aic.html#ibr_aic.ibr_aic.IbrAic.loss_spectrum">[docs]</a>
+    <span class="k">def</span> <span class="nf">loss_spectrum</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">spectrum_list</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
+        <span class="n">reference</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+        <span class="n">ref_index</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">energy_range</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">scale_range</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">weight</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;MSRE&quot;</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">energy_range</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">energy_range</span> <span class="o">=</span> <span class="p">[</span><span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">scale_range</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">scale_range</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">1.5</span><span class="p">]</span>
+
+        <span class="n">scale</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([])</span>
+
+        <span class="n">index</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span>
+            <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">energy_list</span><span class="p">[</span><span class="n">ref_index</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">energy_range</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+            <span class="o">&amp;</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">energy_list</span><span class="p">[</span><span class="n">ref_index</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">energy_range</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">spectrum</span> <span class="ow">in</span> <span class="n">spectrum_list</span><span class="p">:</span>
+
+            <span class="k">def</span> <span class="nf">func</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">loss_func</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">spectrum</span><span class="p">,</span> <span class="n">reference</span><span class="p">,</span> <span class="n">index</span><span class="p">,</span> <span class="n">weight</span><span class="p">)</span>
+
+            <span class="n">scale</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="n">scale</span><span class="p">,</span>
+                <span class="n">opt</span><span class="o">.</span><span class="n">minimize</span><span class="p">(</span>
+                    <span class="n">func</span><span class="p">,</span> <span class="p">[</span><span class="mf">1.0</span><span class="p">],</span> <span class="n">bounds</span><span class="o">=</span><span class="p">[</span><span class="n">scale_range</span><span class="p">],</span> <span class="n">options</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;maxiter&quot;</span><span class="p">:</span> <span class="mi">1000</span><span class="p">}</span>
+                <span class="p">)</span><span class="o">.</span><span class="n">x</span><span class="p">,</span>
+            <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">scale</span></div>
+
+
+<div class="viewcode-block" id="IbrAic.calc_bragg">
+<a class="viewcode-back" href="../../ibr_aic.html#ibr_aic.ibr_aic.IbrAic.calc_bragg">[docs]</a>
+    <span class="k">def</span> <span class="nf">calc_bragg</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">energy_range</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">scale_range</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Self</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Function to caculate the Bragg peaks</span>
+
+<span class="sd">        The caulculation of the Bragg peaks is done in iterative manner and this function corresponds to 1 iteration.</span>
+
+<span class="sd">        1. Choose a reference spectrum where the Bragg peaks will be calculated.\n</span>
+<span class="sd">        2. Calaculate the scaling factor for the other spectra to match the reference spectrum. The loss fuction is the mean square root error, to reduce the effect of the Bragg peaks.\n</span>
+<span class="sd">        3. Subtract the scaled spectra from the reference spectrum. This difference spectrum will be corresponding to the Bragg peaks, but it is not remove completely.\n</span>
+<span class="sd">        4. Take an average of the difference spectra, add it to the reference spectrum, and go back to step 2.\n</span>
+<span class="sd">        5. Repeat step 2 to 4 until the difference spectrum converges.\n</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            energy_range (list[float], optional): Energy range to be used for the calculation of the loss function. Defaults to [-np.inf, np.inf].</span>
+<span class="sd">            scale_range (list[float], optional): Range of the scaling factor. Defaults to [0.5, 1.5].</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            self: Reference to the class itself</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">minimum_mu_tmp</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">scale_tmp</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">if</span> <span class="n">energy_range</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">energy_range</span> <span class="o">=</span> <span class="p">[</span><span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">energy_range</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span>
+                <span class="s2">&quot;There will be no calculation performed, because the len(energy_range) is &lt;2&quot;</span>
+            <span class="p">)</span>
+            <span class="k">return</span> <span class="bp">self</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">energy_range</span> <span class="o">=</span> <span class="p">[</span><span class="nb">min</span><span class="p">(</span><span class="n">energy_range</span><span class="p">),</span> <span class="nb">max</span><span class="p">(</span><span class="n">energy_range</span><span class="p">)]</span>
+
+        <span class="n">spectrum_tmp</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">mu</span> <span class="o">+</span> <span class="n">min_mu</span> <span class="k">for</span> <span class="n">mu</span><span class="p">,</span> <span class="n">min_mu</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mu_list</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">min_mu_list</span><span class="p">)</span>
+        <span class="p">]</span>
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mu_list</span><span class="p">)):</span>
+            <span class="n">reference</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">=</span> <span class="n">copy</span><span class="p">(</span><span class="n">spectrum_tmp</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+            <span class="n">scale</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">loss_spectrum</span><span class="p">(</span>
+                <span class="n">spectrum_tmp</span><span class="p">,</span> <span class="n">reference</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">energy_range</span><span class="p">,</span> <span class="n">scale_range</span>
+            <span class="p">)</span>
+            <span class="n">minimum_mu</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">energy_list</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+
+            <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mu_list</span><span class="p">)):</span>
+                <span class="n">diff</span> <span class="o">=</span> <span class="n">spectrum_tmp</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">*</span> <span class="n">scale</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">-</span> <span class="n">reference</span>
+                <span class="n">minimum_mu</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">minimum</span><span class="p">(</span>
+                    <span class="n">minimum_mu</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">minimum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">diff</span><span class="p">),</span> <span class="n">diff</span><span class="p">)</span>
+                <span class="p">)</span>
+            <span class="n">scale_tmp</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">scale</span><span class="p">)</span>
+            <span class="n">minimum_mu_tmp</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">minimum_mu</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mu_list</span><span class="p">)</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">min_mu_list</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+
+        <span class="n">delta_mu</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">minimum_mu_tmp</span><span class="p">)):</span>
+            <span class="n">delta_mu</span> <span class="o">+=</span> <span class="p">(</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">min_mu_list</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">-</span> <span class="n">minimum_mu_tmp</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+                <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">min_mu_list</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+            <span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">ibr_loss</span> <span class="o">=</span> <span class="n">delta_mu</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">min_mu_list</span> <span class="o">=</span> <span class="n">minimum_mu_tmp</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scale_list</span> <span class="o">=</span> <span class="n">scale_tmp</span>
+
+        <span class="k">return</span> <span class="bp">self</span></div>
+
+
+<div class="viewcode-block" id="IbrAic.calc_bragg_iter">
+<a class="viewcode-back" href="../../ibr_aic.html#ibr_aic.ibr_aic.IbrAic.calc_bragg_iter">[docs]</a>
+    <span class="k">def</span> <span class="nf">calc_bragg_iter</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">energy_range</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">scale_range</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">criteria</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-10</span><span class="p">,</span>
+        <span class="n">max_iter</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Self</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Iterative calculation of the Bragg peaks</span>
+
+<span class="sd">        Calculate the Bragg peaks in iterative manner. The calculation will be stopped when the difference between the previous and current update is lower than the criteria.</span>
+<span class="sd">        The amount of update is defined by MAE of the spectra, and has a same unit as absorption.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            energy_range (list[float], optional): Energy range to be used for the calculation of the loss function. Defaults to [-np.inf, np.inf].</span>
+<span class="sd">            scale_range (list[float], optional): Range of the scaling factor. Please change this value if if the absolute intensity changes significantly larger than 1. Defaults to [0.5, 1.5].</span>
+<span class="sd">            criteria (float, optional): The criteria to stop the calculation. Defaults to 1e-5.</span>
+<span class="sd">            max_iter (int, optional): Maximum number of iteration. Defaults to 200.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            self: Reference to the class itself</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">max_iter</span><span class="p">):</span>
+            <span class="n">previous_ibr_loss</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ibr_loss</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">calc_bragg</span><span class="p">(</span><span class="n">energy_range</span><span class="p">,</span> <span class="n">scale_range</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">previous_ibr_loss</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">ibr_loss</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">criteria</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;The calculation converged after </span><span class="si">{}</span><span class="s2"> iterations&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span><span class="p">))</span>
+                <span class="k">break</span>
+
+        <span class="k">return</span> <span class="bp">self</span></div>
+
+
+<div class="viewcode-block" id="IbrAic.save_dat">
+<a class="viewcode-back" href="../../ibr_aic.html#ibr_aic.ibr_aic.IbrAic.save_dat">[docs]</a>
+    <span class="k">def</span> <span class="nf">save_dat</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">file_list</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">output_dir</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;./output/&quot;</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Self</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Save dat</span>
+
+<span class="sd">        Save the spectra to the dat file. The file name will be the basename of the file_list.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            file_list (list[str], optional): List of the file names. If none, the file_name will be taken from the __init__ arguments of the class. Defaults to None.</span>
+<span class="sd">            output_dir (str, optional): The directory to save the ouput dat files. Defaults to &quot;./output/&quot;</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Self</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">file_list</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">file_list</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mu_list</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">file_list</span> <span class="o">=</span> <span class="n">file_list</span>
+
+        <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">output_dir</span><span class="p">),</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">energy_list</span><span class="p">)):</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">file_list</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">save_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+                    <span class="n">output_dir</span><span class="p">,</span>
+                    <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">file_list</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="o">+</span> <span class="s2">&quot;_remove_bragg.dat&quot;</span><span class="p">,</span>
+                <span class="p">)</span>
+
+                <span class="n">np</span><span class="o">.</span><span class="n">savetxt</span><span class="p">(</span>
+                    <span class="n">save_path</span><span class="p">,</span>
+                    <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
+                        <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">energy_list</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">mu_list</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">min_mu_list</span><span class="p">[</span><span class="n">i</span><span class="p">]]</span>
+                    <span class="p">)</span><span class="o">.</span><span class="n">T</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">savetxt</span><span class="p">(</span>
+                    <span class="s2">&quot;spectrum_</span><span class="si">{}</span><span class="s2">.dat&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span><span class="p">),</span>
+                    <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
+                        <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">energy_list</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">mu_list</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">min_mu_list</span><span class="p">[</span><span class="n">i</span><span class="p">]]</span>
+                    <span class="p">)</span><span class="o">.</span><span class="n">T</span><span class="p">,</span>
+                <span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="prepare_spectra_from_QAS">
+<a class="viewcode-back" href="../../ibr_aic.html#ibr_aic.ibr_aic.prepare_spectra_from_QAS">[docs]</a>
+<span class="k">def</span> <span class="nf">prepare_spectra_from_QAS</span><span class="p">(</span>
+    <span class="n">file_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">fluorescence</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span> <span class="nb">list</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Example of preparing a input for IbrAic class</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        file_path (str): Path to the XAS file. The file_path has to be in the format of glob.</span>
+<span class="sd">        fluorescence (bool, optional): If True, the fluorescence XAS will be used. If False, the absorption XAS will be used. Defaults to True.</span>
+<span class="sd">        file_path (str): Path to the XAS file. The file_path has to be in the format of glob.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        energy_list(list[np.ndarray]): List of the energy</span>
+<span class="sd">        mu_list(list[np.ndarray]): List of the mu</span>
+<span class="sd">        file_list(list[str]): List of the file path</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">files</span> <span class="o">=</span> <span class="n">glob</span><span class="p">(</span><span class="n">file_path</span><span class="p">)</span>
+    <span class="n">energy_list</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">mu_list</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">file_list</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">for</span> <span class="n">file</span> <span class="ow">in</span> <span class="n">files</span><span class="p">:</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">loadtxt</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
+
+        <span class="n">energy</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">fluorescence</span><span class="p">:</span>
+            <span class="n">mu</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span> <span class="mi">4</span><span class="p">]</span> <span class="o">/</span> <span class="n">data</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">mu</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">data</span><span class="p">[:,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">/</span> <span class="n">data</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">])</span>
+
+        <span class="n">energy_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">energy</span><span class="p">)</span>
+        <span class="n">mu_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">mu</span><span class="p">)</span>
+        <span class="n">file_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">energy_list</span><span class="p">,</span> <span class="n">mu_list</span><span class="p">,</span> <span class="n">file_list</span></div>
+
+
+
+<div class="viewcode-block" id="prepare_group_from_QAS">
+<a class="viewcode-back" href="../../ibr_aic.html#ibr_aic.ibr_aic.prepare_group_from_QAS">[docs]</a>
+<span class="k">def</span> <span class="nf">prepare_group_from_QAS</span><span class="p">(</span>
+    <span class="n">file_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">fluorescence</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="n">HasEnergyMu</span><span class="p">],</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Example of preparing an input(group) for IbrAic</span>
+
+<span class="sd">    Please `pip install xraylarch` if you want to use this function.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        file_path (str): Path to the XAS file. The file_path has to be in the format of glob.</span>
+<span class="sd">        fluorescence (bool, optional): If True, the fluorescence XAS will be used. If False, the absorption XAS will be used. Defaults to True.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        group_list(list[Group]): List of the group</span>
+<span class="sd">        file_list(list[str]): List of the file path</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="kn">from</span> <span class="nn">larch</span> <span class="kn">import</span> <span class="n">Group</span>
+    <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span>
+            <span class="s2">&quot;Please `pip install xraylarch` in order to use this function&quot;</span>
+        <span class="p">)</span>
+
+    <span class="n">files</span> <span class="o">=</span> <span class="n">glob</span><span class="p">(</span><span class="n">file_path</span><span class="p">)</span>
+    <span class="n">group_list</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">file_list</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">file</span> <span class="ow">in</span> <span class="n">files</span><span class="p">:</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">loadtxt</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
+        <span class="n">energy</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">fluorescence</span><span class="p">:</span>
+            <span class="n">mu</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span> <span class="mi">4</span><span class="p">]</span> <span class="o">/</span> <span class="n">data</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">mu</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">data</span><span class="p">[:,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">/</span> <span class="n">data</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">])</span>
+
+        <span class="n">group_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Group</span><span class="p">(</span><span class="n">energy</span><span class="o">=</span><span class="n">energy</span><span class="p">,</span> <span class="n">mu</span><span class="o">=</span><span class="n">mu</span><span class="p">))</span>
+        <span class="n">file_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">group_list</span><span class="p">,</span> <span class="n">file_list</span></div>
+
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="k">pass</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Ryuichi Shimogawa.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
