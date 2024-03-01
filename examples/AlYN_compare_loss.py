@@ -267,8 +267,8 @@ def main():
 
     edge_step = merged_bragg_peak_removed_spectrum.edge_step
 
-    merged_spectra = merged_spectra[:-1]
-    labels = labels[:-1]
+    # merged_spectra = merged_spectra[:-1]
+    # labels = labels[:-1]
 
     for key, scale in scale_dict.items():
         merged_spectra_tmp = deepcopy(merged_spectra)

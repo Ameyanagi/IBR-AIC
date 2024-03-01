@@ -1,0 +1,580 @@
+import os
+from glob import glob
+
+import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
+import numpy as np
+import scienceplots
+from larch import Group
+from larch.io import merge_groups
+from larch.xafs import autobk, pre_edge, xftf
+from scipy.signal import find_peaks
+
+from ibr_aic import IbrAic
+
+plt.style.use(["science", "nature", "bright"])
+font_size = 11
+plt.rcParams.update({"font.size": font_size})
+plt.rcParams.update({"axes.labelsize": font_size})
+plt.rcParams.update({"xtick.labelsize": font_size})
+plt.rcParams.update({"ytick.labelsize": font_size})
+plt.rcParams.update({"legend.fontsize": font_size - 2})
+
+plt.rcParams.update({"legend.frameon": True})
+plt.rcParams.update({"legend.framealpha": 1.0})
+plt.rcParams.update({"legend.fancybox": True})
+plt.rcParams.update({"legend.numpoints": 1})
+plt.rcParams.update({"patch.linewidth": 0.5})
+plt.rcParams.update({"patch.edgecolor": "black"})
+
+
+def e2k(E: np.ndarray, E0: float) -> np.ndarray:
+    return 16.2009 * (((E - E0) / 1000) ** 0.5)
+
+
+def plot_group_list(
+    group_list: list[Group],
+    label_list: list[str],
+    save_dir: str = "./output/",
+    save_prefix: str = "",
+    ax_ext=None,
+):
+    e0 = group_list[-1].e0
+    fig, ax = plt.subplots(1, 1, figsize=(3, 3))
+
+    for i, group, label in zip(range(len(group_list)), group_list, label_list):
+        ax.plot(
+            group.energy,
+            group.mu + 0.1 * (len(group_list) - i - 1),
+            label=label,
+            linewidth=0.5,
+            color=f"C{i}",
+        )
+
+        if ax_ext is not None:
+            ax_ext.plot(
+                group.energy,
+                group.mu + 0.1 * (len(group_list) - i - 1),
+                label=label,
+                linewidth=0.5,
+                color=f"C{i}",
+            )
+
+    ax.xaxis.set_major_locator(ticker.MaxNLocator(5))
+    ax.xaxis.set_minor_locator(ticker.MaxNLocator(25))
+    ax.legend()
+
+    # set labels
+    ax.set_xlabel("Energy (eV)")
+    ax.set_ylabel("Scaled raw absorption coefficient (offset = 0.1)")
+
+    save_path = os.path.join(save_dir, f"{save_prefix}energy.png")
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+    fig.tight_layout(pad=0.5)
+    fig.savefig(save_path, dpi=300)
+
+    if ax_ext is not None:
+        ax.xaxis.set_major_locator(ticker.MaxNLocator(4))
+        ax.xaxis.set_minor_locator(ticker.MaxNLocator(20))
+        ax_ext.set_xlabel("Energy (eV)")
+        ax_ext.set_ylabel("Scaled raw absorption coefficient\n(offset = 0.1)")
+
+    ax.set_xlim(e0 - 20, e0 + 80)
+    save_path = os.path.join(save_dir, f"{save_prefix}energy_xanes.png")
+
+    fig.tight_layout(pad=0.5)
+    fig.savefig(save_path, dpi=300)
+
+    fig, ax = plt.subplots(1, 1, figsize=(3, 3))
+
+    group = group_list[-1]
+    label = label_list[-1]
+    ax.plot(group.k, group.k**2 * group.chi, label=label, color="C0")
+
+    ax.xaxis.set_major_locator(ticker.MaxNLocator(5))
+    ax.xaxis.set_minor_locator(ticker.MaxNLocator(25))
+    ax.legend()
+
+    # set labels
+    ax.set_xlabel("$k$ ($Å^{-1}$)")
+    ax.set_ylabel("$k^2\chi(\mathrm{k})$ (Å$^{-2}$)")
+
+    ax.set_xlim(0, 15)
+    save_path = os.path.join(save_dir, f"{save_prefix}chi.png")
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+
+    fig.tight_layout(pad=0.5)
+    fig.savefig(save_path, dpi=300)
+
+
+def plot_group_list_comparison(
+    group_list: list[Group],
+    label_list: list[str],
+    save_dir: str = "./output/",
+    save_prefix: str = "",
+    ax_ext=None,
+):
+    e0 = group_list[-1].e0
+    fig, ax = plt.subplots(1, 1, figsize=(3, 3))
+
+    for i, group, label in zip(range(len(group_list)), group_list, label_list):
+        ax.plot(
+            group.energy,
+            group.flat,
+            label=label,
+            linewidth=0.5,
+            color=f"C{i}",
+        )
+
+        if ax_ext is not None:
+            ax_ext[0].plot(
+                group.energy,
+                group.flat,
+                label=label,
+                linewidth=0.5,
+                color=f"C{i}",
+            )
+
+    ax.xaxis.set_major_locator(ticker.MaxNLocator(5))
+    ax.xaxis.set_minor_locator(ticker.MaxNLocator(25))
+    ax.legend()
+
+    # set labels
+    ax.set_xlabel("Energy (eV)")
+    ax.set_ylabel("Normalized absorption coefficient")
+
+    save_path = os.path.join(save_dir, f"{save_prefix}energy.png")
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+
+    fig.tight_layout(pad=0.5)
+    fig.savefig(save_path, dpi=300)
+
+    if ax_ext is not None:
+        ax_ext[0].xaxis.set_major_locator(ticker.MaxNLocator(4))
+        ax_ext[0].xaxis.set_minor_locator(ticker.MaxNLocator(20))
+        ax_ext[0].set_xlabel("Energy (eV)")
+        ax_ext[0].set_ylabel("Normalized absorption coefficient")
+
+    ax.set_xlim(e0 - 20, e0 + 80)
+    save_path = os.path.join(save_dir, f"{save_prefix}energy_xanes.png")
+
+    fig.tight_layout(pad=0.5)
+    fig.savefig(save_path, dpi=300)
+
+    fig, ax = plt.subplots(1, 1, figsize=(3, 3))
+
+    for i, group, label in zip(range(len(group_list)), group_list, label_list):
+        ax.plot(group.k, group.k**2 * group.chi, label=label, color=f"C{i}")
+
+        if ax_ext is not None:
+            ax_ext[1].plot(
+                group.k, group.k**2 * group.chi, label=label, color=f"C{i}"
+            )
+
+    ax.xaxis.set_major_locator(ticker.MaxNLocator(5))
+    ax.xaxis.set_minor_locator(ticker.MaxNLocator(25))
+    ax.legend()
+
+    # set labels
+    ax.set_xlabel("$k$ ($Å^{-1}$)")
+    ax.set_ylabel("$k^2\chi(\mathrm{k})$ ($\mathrm{\AA}^{-2}$)")
+
+    ax.set_xlim(0, 15)
+    save_path = os.path.join(save_dir, f"{save_prefix}chi.png")
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+
+    fig.tight_layout(pad=0.5)
+    fig.savefig(save_path, dpi=300)
+
+    if ax_ext is not None:
+        ax_ext[1].xaxis.set_major_locator(ticker.MaxNLocator(4))
+        ax_ext[1].xaxis.set_minor_locator(ticker.MaxNLocator(20))
+        ax_ext[1].set_xlabel("$k$ ($\mathrm{\AA}^{-1}$)")
+        ax_ext[1].set_ylabel("$k^2\chi(\mathrm{k})$ ($\mathrm{\AA}^{-2}$)")
+        ax_ext[1].set_xlim(0, 15)
+
+    fig, ax = plt.subplots(1, 1, figsize=(3, 3))
+
+    for i, group, label in zip(range(len(group_list)), group_list, label_list):
+        ax.plot(group.r, group.chir_mag, label=label, color=f"C{i}")
+
+        if ax_ext is not None:
+            ax_ext[2].plot(group.r, group.chir_mag, label=label, color=f"C{i}")
+
+    ax.xaxis.set_major_locator(ticker.MaxNLocator(5))
+    ax.xaxis.set_minor_locator(ticker.MaxNLocator(25))
+    ax.legend()
+
+    # set labels
+    ax.set_xlabel("$R$ ($Å$)")
+    # tobe fixed
+    ax.set_ylabel("$|\chi(R)$ ($\mathrm{\AA}^{-3}$)")
+
+    ax.set_xlim(0, 6)
+    save_path = os.path.join(save_dir, f"{save_prefix}chir_mag.png")
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+
+    fig.tight_layout(pad=0.5)
+    fig.savefig(save_path, dpi=300)
+
+    if ax_ext is not None:
+        ax_ext[2].xaxis.set_major_locator(ticker.MaxNLocator(4))
+        ax_ext[2].xaxis.set_minor_locator(ticker.MaxNLocator(20))
+        ax_ext[2].set_xlabel("$R$ ($\mathrm{\AA}$)")
+        ax_ext[2].set_ylabel("$|\chi(R)|$ ($\mathrm{\AA}^{-3}$)")
+        ax_ext[2].set_xlim(0, 6)
+
+
+def read_and_merge_spectra(
+    file_paths: list[str], fluorescence: bool = True
+) -> list[Group]:
+    merged_spectra: list[Group] = []
+
+    energy_grid: np.ndarray | None = None
+
+    for file_path in file_paths:
+        files = glob(file_path)
+        files.sort()
+
+        group_list: list[Group] = []
+        for file in files:
+            data = np.loadtxt(file)
+
+            iff = data[:, 4]
+            it = data[:, 2]
+            i0 = data[:, 1]
+
+            energy = data[:, 0]
+
+            if fluorescence:
+                mu = iff / i0
+            else:
+                mu = np.log(i0 / it)
+
+            if energy_grid is None:
+                energy_grid = energy
+
+            else:
+                mu = np.interp(energy_grid, energy, mu)
+
+            group_list.append(Group(energy=energy_grid, mu=mu))
+        if len(group_list) > 1:
+            group = merge_groups(group_list)
+
+            merged_spectra.append(group)
+
+    return merged_spectra
+
+
+def read_xmu_spectrum(file_path: str) -> Group:
+    data = np.loadtxt(file_path)
+
+    return Group(energy=data[:, 0], mu=data[:, 1])
+
+
+def generate_larch_group_list(ix: IbrAic) -> list[Group]:
+    energy_list = ix.energy_list
+    mu_list = ix.mu_list
+    min_mu_list = ix.min_mu_list
+    file_list = ix.file_list
+
+    if file_list is None:
+        file_list = [""] * len(energy_list)
+
+    group_list: list[Group] = []
+    for energy, mu, min_mu, file in zip(energy_list, mu_list, min_mu_list, file_list):
+        group = Group(energy=energy, mu=mu + min_mu, filename=file)
+        group_list.append(group)
+
+    return group_list
+
+
+def main():
+    angles = [30, 35, 40, 45]
+
+    experiments: list[dict] = [
+        {"temp": "350", "gas": "N2"},
+        {"temp": "350", "gas": "H2"},
+        {"temp": "RT", "gas": "N2"},
+        {"temp": "RT", "gas": "CO"},
+    ]
+
+    label_dict: dict = {
+        "H2": "$\mathrm{H_2}$",
+        "N2": "$\mathrm{N_2}$",
+        "CO": "CO",
+    }
+
+    ncols_plot_all = 2
+    nrows_plot_all = 2
+    fig_plot_all, ax_plot_all = plt.subplots(
+        nrows=nrows_plot_all,
+        ncols=ncols_plot_all,
+        figsize=(3 * ncols_plot_all, 3 * nrows_plot_all),
+    )
+
+    ncols_compare = 3
+    nrows_compare = 4
+    fig_compare, ax_compare = plt.subplots(
+        nrows=nrows_compare,
+        ncols=ncols_compare,
+        figsize=(3 * ncols_compare, 3 * nrows_compare),
+    )
+
+    ax_plot_all = ax_plot_all.flatten()
+
+    for j, experiment in enumerate(experiments):
+        e0 = 11564
+
+        temp = experiment["temp"]
+        gas = experiment["gas"]
+
+        file_paths = [
+            f"./data/PtSiO2/PtSiO2_Al_Plate_{temp}_{gas}_{angle}*.dat"
+            for angle in angles
+        ]
+
+        file_list = [f"PtSiO2_{temp}_{gas}_{angle}.dat" for angle in angles]
+
+        if temp == "RT":
+            temp_label: str = "RT"
+        else:
+            temp_label: str = f"{temp}$^\circ$C"
+
+        labels = [
+            # f"Pt/SiO$_2$ {temp_label} {label_dict[gas]} {angle}$^\circ$"
+            f"{angle}$^\circ$"
+            for angle in angles
+        ]
+        merged_spectra = read_and_merge_spectra(file_paths)
+
+        print(len(merged_spectra))
+
+        # Remove the bragg peak with IbrAic
+        ix = IbrAic(group_list=merged_spectra, file_list=file_list)
+
+        ix.calc_bragg_iter().save_dat()
+
+        # calculate the glitch position
+        glitch_data = ix.min_mu_list[-1]
+        glitch_data = np.abs(glitch_data)
+
+        max_height = np.max(glitch_data)
+
+        energy_interp = np.linspace(
+            ix.energy_list[-1].min(), ix.energy_list[-1].max(), 1000
+        )
+        glitch_data_interp = np.interp(energy_interp, ix.energy_list[-1], glitch_data)
+
+        glitch_data_interp[np.where(energy_interp < e0)] = 0
+
+        ratio = 0.5
+
+        glitch_data_interp_low_energy = glitch_data_interp[
+            np.where(
+                energy_interp
+                < (ratio * energy_interp.min() + (1 - ratio) * energy_interp.max()) / 2
+            )
+        ]
+        glitch_data_interp_high_energy = glitch_data_interp[
+            np.where(
+                energy_interp
+                >= (ratio * energy_interp.min() + (1 - ratio) * energy_interp.max()) / 2
+            )
+        ]
+        # find peak position
+        # peaks, _ = find_peaks(glitch_data_interp, height=max_height * 0.02, distance=10)
+        low_energy_peaks, _ = find_peaks(
+            glitch_data_interp_low_energy, height=max_height * 0.4, distance=20
+        )
+        high_energy_peaks, _ = find_peaks(
+            glitch_data_interp_high_energy, height=max_height * 0.02, distance=10
+        )
+        peaks = np.concatenate(
+            [low_energy_peaks, high_energy_peaks + len(glitch_data_interp_low_energy)]
+        )
+
+        fig_glitch, ax_glitch = plt.subplots(1, 1, figsize=(3, 3))
+
+        ax_glitch.plot(energy_interp, glitch_data_interp)
+        ax_glitch.plot(energy_interp[peaks], glitch_data_interp[peaks], "x")
+        ax_glitch.set_xlabel("Energy (eV)")
+        ax_glitch.set_ylabel("Absorption coefficient")
+        fig_glitch.tight_layout(pad=0.5)
+        fig_glitch.savefig(f"./output/PtSiO2_{temp}_{gas}_glitch_test.png", dpi=300)
+
+        glitch_peaks = energy_interp[peaks]
+        glitch_intensities = glitch_data_interp[peaks]
+
+        group_list = generate_larch_group_list(ix)
+
+        # Merge spectra
+        merged_bragg_peak_removed_spectrum = merge_groups(group_list)
+
+        merged_spectra.append(merged_bragg_peak_removed_spectrum)
+        labels.append(f"IBR-AIC")
+        # labels.append(f"Pt/SiO$_2$ {temp_label} {label_dict[gas]}\nIBR-AIC")
+
+        ia_scale = IbrAic(group_list=merged_spectra)
+
+        scale = ia_scale.loss_spectrum(ia_scale.mu_list, ia_scale.mu_list[-1], -1)
+
+        pre_edge_kws: dict = {
+            "e0": e0,
+            "nnorm": 3,
+            "pre1": -180,
+            "pre2": -50,
+            "norm1": 150,
+            "norm2": 970,
+        }
+
+        pre_edge(merged_bragg_peak_removed_spectrum, **pre_edge_kws)
+
+        edge_step = merged_bragg_peak_removed_spectrum.edge_step
+
+        for i, merged_spectrum in enumerate(merged_spectra):
+            merged_spectrum.mu = merged_spectrum.mu * scale[i] / edge_step
+
+        autobk_kws: dict = {"rbkg": 1.6, "kmin": 0, "kmax": None}
+
+        xftf_kws: dict = {
+            "kmin": 2,
+            "kmax": 8,
+            "dk": 2,
+            "kweight": 2,
+            "window": "Hanning",
+        }
+
+        for group in merged_spectra:
+            group.e0 = e0
+            pre_edge(group, **pre_edge_kws)
+            autobk(group, **autobk_kws)
+            xftf(group, **xftf_kws)
+
+        plot_group_list(
+            merged_spectra,
+            labels,
+            save_prefix=f"PtSiO2_{temp}_{gas}",
+            ax_ext=ax_plot_all[j],
+        )
+
+        # Comprison with the reference spectrum
+
+        ref_file_paths: list[str] = [f"./data/PtSiO2_pellet/PtSiO2_{temp}_{gas}*.dat"]
+
+        ref_group: list[Group] = read_and_merge_spectra(
+            ref_file_paths, fluorescence=False
+        )
+        comparison_group_list: list[Group] = [
+            merged_bragg_peak_removed_spectrum
+        ] + ref_group
+
+        # Add Manual deglitched spectra
+
+        manual_deglitch_file_path: str = (
+            f"./manual_deglitch/PtSiO2_Al_Plate_{temp}_{gas}_manual_deglitch.xmu"
+        )
+
+        manual_deglitch_group: Group = read_xmu_spectrum(manual_deglitch_file_path)
+
+        comparison_group_list.append(manual_deglitch_group)
+
+        comparison_labels = [f"IBR-AIC", f"ref", f"manual deglitch"]
+
+        for group in comparison_group_list:
+            group.e0 = 0
+            pre_edge(group, **pre_edge_kws)
+            autobk(group, **autobk_kws)
+            xftf(group, **xftf_kws)
+
+        plot_group_list_comparison(
+            comparison_group_list,
+            comparison_labels,
+            save_prefix=f"PtSiO2_{temp}_{gas}_comparison",
+            ax_ext=ax_compare[j],
+        )
+
+        y_range = ax_compare[j, 0].get_ylim()
+
+        for glitch_peak, glitch_intensity in zip(glitch_peaks, glitch_intensities):
+            ax_compare[j, 0].plot(
+                [glitch_peak, glitch_peak],
+                [y_range[0], y_range[1]],
+                "k--",
+                color="black",
+                alpha=0.2,
+                # alpha=glitch_intensity / max_height,
+                linewidth=0.5,
+            )
+        ax_compare[j, 0].set_ylim(y_range)
+
+        y_range = ax_compare[j, 1].get_ylim()
+
+        glitch_peaks = e2k(energy_interp[peaks], e0)
+
+        for glitch_peak, glitch_intensity in zip(glitch_peaks, glitch_intensities):
+            ax_compare[j, 1].plot(
+                [glitch_peak, glitch_peak],
+                [y_range[0], y_range[1]],
+                "k--",
+                color="black",
+                alpha=0.2,
+                # alpha=glitch_intensity / max_height,
+                linewidth=0.5,
+            )
+
+        ax_compare[j, 1].set_ylim(y_range)
+
+    figure_labels_plot_all = ["(a)", "(b)", "(c)", "(d)"]
+    figure_labels_compare = [
+        "(a1)",
+        "(a2)",
+        "(a3)",
+        "(b1)",
+        "(b2)",
+        "(b3)",
+        "(c1)",
+        "(c2)",
+        "(c3)",
+        "(d1)",
+        "(d2)",
+        "(d3)",
+    ]
+
+    legend = ax_plot_all[0].legend(loc="lower right")
+
+    for t in legend.get_texts():
+        t.set_ha("right")
+
+    legend = ax_compare[0, 0].legend(loc="lower right")
+
+    for t in legend.get_texts():
+        t.set_ha("right")
+
+    for ax_item, label in zip(ax_plot_all, figure_labels_plot_all):
+        ax_item.text(
+            x=0.02,
+            y=0.94,
+            s=f"{label}",
+            transform=ax_item.transAxes,
+            fontsize=font_size,
+        )
+
+    for ax_item, label in zip(ax_compare.flatten(), figure_labels_compare):
+        ax_item.text(
+            x=0.05,
+            y=0.90,
+            s=f"{label}",
+            transform=ax_item.transAxes,
+            fontsize=font_size * 1.2,
+        )
+
+    fig_plot_all.tight_layout(pad=0.5)
+    fig_plot_all.savefig("./output/publication_PtSiO2_all.png", dpi=300)
+
+    fig_compare.tight_layout(pad=0.5)
+    fig_compare.savefig("./output/publication_PtSiO2_comparison.png", dpi=300)
+
+
+if __name__ == "__main__":
+    main()

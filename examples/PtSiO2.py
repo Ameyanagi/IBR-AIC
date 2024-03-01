@@ -8,6 +8,7 @@ import scienceplots
 from larch import Group
 from larch.io import merge_groups
 from larch.xafs import autobk, pre_edge, xftf
+from scipy.signal import find_peaks
 
 from ibr_aic import IbrAic
 
@@ -25,6 +26,10 @@ plt.rcParams.update({"legend.fancybox": True})
 plt.rcParams.update({"legend.numpoints": 1})
 plt.rcParams.update({"patch.linewidth": 0.5})
 plt.rcParams.update({"patch.edgecolor": "black"})
+
+
+def e2k(E: np.ndarray, E0: float) -> np.ndarray:
+    return 16.2009 * (((E - E0) / 1000) ** 0.5)
 
 
 def plot_group_list(
@@ -261,6 +266,12 @@ def read_and_merge_spectra(
     return merged_spectra
 
 
+def read_xmu_spectrum(file_path: str) -> Group:
+    data = np.loadtxt(file_path)
+
+    return Group(energy=data[:, 0], mu=data[:, 1])
+
+
 def generate_larch_group_list(ix: IbrAic) -> list[Group]:
     energy_list = ix.energy_list
     mu_list = ix.mu_list
@@ -278,14 +289,14 @@ def generate_larch_group_list(ix: IbrAic) -> list[Group]:
     return group_list
 
 
-def main():
+def main(plot_manual_deglitch=False):
     angles = [30, 35, 40, 45]
 
     experiments: list[dict] = [
-        {"temp": "350", "gas": "H2"},
         {"temp": "350", "gas": "N2"},
-        {"temp": "RT", "gas": "CO"},
+        {"temp": "350", "gas": "H2"},
         {"temp": "RT", "gas": "N2"},
+        {"temp": "RT", "gas": "CO"},
     ]
 
     label_dict: dict = {
@@ -313,6 +324,8 @@ def main():
     ax_plot_all = ax_plot_all.flatten()
 
     for j, experiment in enumerate(experiments):
+        e0 = 11564
+
         temp = experiment["temp"]
         gas = experiment["gas"]
 
@@ -329,7 +342,8 @@ def main():
             temp_label: str = f"{temp}$^\circ$C"
 
         labels = [
-            f"Pt/SiO$_2$ {temp_label} {label_dict[gas]} {angle}$^\circ$"
+            # f"Pt/SiO$_2$ {temp_label} {label_dict[gas]} {angle}$^\circ$"
+            f"{angle}$^\circ$"
             for angle in angles
         ]
         merged_spectra = read_and_merge_spectra(file_paths)
@@ -341,21 +355,72 @@ def main():
 
         ix.calc_bragg_iter().save_dat()
 
+        # calculate the glitch position
+        glitch_data = ix.min_mu_list[-1]
+        glitch_data = np.abs(glitch_data)
+
+        max_height = np.max(glitch_data)
+
+        energy_interp = np.linspace(
+            ix.energy_list[-1].min(), ix.energy_list[-1].max(), 1000
+        )
+        glitch_data_interp = np.interp(energy_interp, ix.energy_list[-1], glitch_data)
+
+        glitch_data_interp[np.where(energy_interp < e0)] = 0
+
+        ratio = 0.6
+
+        glitch_data_interp_low_energy = glitch_data_interp[
+            np.where(
+                energy_interp
+                < (ratio * energy_interp.min() + (1 - ratio) * energy_interp.max())
+            )
+        ]
+        glitch_data_interp_high_energy = glitch_data_interp[
+            np.where(
+                energy_interp
+                >= (ratio * energy_interp.min() + (1 - ratio) * energy_interp.max())
+            )
+        ]
+        # find peak position
+        # peaks, _ = find_peaks(glitch_data_interp, height=max_height * 0.02, distance=10)
+        low_energy_peaks, _ = find_peaks(
+            glitch_data_interp_low_energy, height=max_height * 0.2, distance=20
+        )
+        high_energy_peaks, _ = find_peaks(
+            glitch_data_interp_high_energy, height=max_height * 0.02, distance=10
+        )
+        peaks = np.concatenate(
+            [low_energy_peaks, high_energy_peaks + len(glitch_data_interp_low_energy)]
+        )
+
+        fig_glitch, ax_glitch = plt.subplots(1, 1, figsize=(3, 3))
+
+        ax_glitch.plot(energy_interp, glitch_data_interp)
+        ax_glitch.plot(energy_interp[peaks], glitch_data_interp[peaks], "x")
+        ax_glitch.set_xlabel("Energy (eV)")
+        ax_glitch.set_ylabel("Absorption coefficient")
+        fig_glitch.tight_layout(pad=0.5)
+        fig_glitch.savefig(f"./output/PtSiO2_{temp}_{gas}_glitch_test.png", dpi=300)
+
+        glitch_peaks = energy_interp[peaks]
+        glitch_intensities = glitch_data_interp[peaks]
+
         group_list = generate_larch_group_list(ix)
 
         # Merge spectra
         merged_bragg_peak_removed_spectrum = merge_groups(group_list)
 
         merged_spectra.append(merged_bragg_peak_removed_spectrum)
-        labels.append(f"Pt/SiO$_2$ {temp_label} {label_dict[gas]}\nIBR-AIC")
+        labels.append(f"IBR-AIC")
+        # labels.append(f"Pt/SiO$_2$ {temp_label} {label_dict[gas]}\nIBR-AIC")
 
         ia_scale = IbrAic(group_list=merged_spectra)
 
         scale = ia_scale.loss_spectrum(ia_scale.mu_list, ia_scale.mu_list[-1], -1)
 
-        e0 = 11564
-
         pre_edge_kws: dict = {
+            "e0": e0,
             "nnorm": 3,
             "pre1": -180,
             "pre2": -50,
@@ -404,10 +469,20 @@ def main():
             merged_bragg_peak_removed_spectrum
         ] + ref_group
 
-        comparison_labels = [
-            f"Pt/SiO$_2$ {temp_label} {label_dict[gas]}\nIBR-AIC",
-            f"Pt/SiO$_2$ {temp_label} {label_dict[gas]} ref",
-        ]
+        # Add Manual deglitched spectra
+
+        manual_deglitch_file_path: str = (
+            f"./manual_deglitch/PtSiO2_Al_Plate_{temp}_{gas}_manual_deglitch.xmu"
+        )
+
+        manual_deglitch_group: Group = read_xmu_spectrum(manual_deglitch_file_path)
+
+        comparison_labels = [f"IBR-AIC", f"ref"]
+
+        if plot_manual_deglitch:
+            comparison_group_list.append(manual_deglitch_group)
+
+            comparison_labels = [f"IBR-AIC", f"ref", f"manual deglitch"]
 
         for group in comparison_group_list:
             group.e0 = 0
@@ -421,6 +496,37 @@ def main():
             save_prefix=f"PtSiO2_{temp}_{gas}_comparison",
             ax_ext=ax_compare[j],
         )
+
+        y_range = ax_compare[j, 0].get_ylim()
+
+        for glitch_peak, glitch_intensity in zip(glitch_peaks, glitch_intensities):
+            ax_compare[j, 0].plot(
+                [glitch_peak, glitch_peak],
+                [y_range[0], y_range[1]],
+                "k--",
+                color="black",
+                alpha=0.5,
+                # alpha=glitch_intensity / max_height,
+                linewidth=0.5,
+            )
+        ax_compare[j, 0].set_ylim(y_range)
+
+        y_range = ax_compare[j, 1].get_ylim()
+
+        glitch_peaks = e2k(energy_interp[peaks], e0)
+
+        for glitch_peak, glitch_intensity in zip(glitch_peaks, glitch_intensities):
+            ax_compare[j, 1].plot(
+                [glitch_peak, glitch_peak],
+                [y_range[0], y_range[1]],
+                "k--",
+                color="black",
+                alpha=0.5,
+                # alpha=glitch_intensity / max_height,
+                linewidth=0.5,
+            )
+
+        ax_compare[j, 1].set_ylim(y_range)
 
     figure_labels_plot_all = ["(a)", "(b)", "(c)", "(d)"]
     figure_labels_compare = [

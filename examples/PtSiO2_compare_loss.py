@@ -148,6 +148,7 @@ def main():
             temp_label: str = f"{temp}$^\circ$C"
 
         labels = [f"Pt/SiO$_2$ {temp_label} {gas} {angle}$^\circ$" for angle in angles]
+        # labels = [f"Pt/SiO$_2$ {temp_label} {gas} {angle}$^\circ$" for angle in angles]
         merged_spectra = read_and_merge_spectra(file_paths)
 
         # Remove the bragg peak with IbrAic
